@@ -1,0 +1,51 @@
+id_producto,nombre_producto,categoria,precio_base_mxn,stock_minimo,proveedor
+PROD-001,Artículo Jugueter,Juguetería,545.42,22,Proveedor-Centro
+PROD-002,Artículo Hogar Re,Hogar,670.94,11,Proveedor-Norte
+PROD-003,Artículo Alimento,Alimentos,1927.55,6,Proveedor-Norte
+PROD-004,Artículo Hogar Re,Hogar,1085.34,43,Proveedor-Norte
+PROD-005,Artículo Alimento,Alimentos,934.83,46,Proveedor-Bajío
+PROD-006,Artículo Hogar Re,Hogar,2048.98,22,Proveedor-Norte
+PROD-007,Artículo Hogar Re,Hogar,3156.72,26,Proveedor-Pacífi
+PROD-008,Artículo Hogar Re,Hogar,1008.15,26,Proveedor-Norte
+PROD-009,Artículo Electróni,Electrónica,1740.68,27,Proveedor-Pacífi
+PROD-010,Artículo Alimento,Alimentos,1227.12,7,Proveedor-Bajío
+PROD-011,Artículo Alimento,Alimentos,605.48,29,Proveedor-Norte
+PROD-012,Artículo Alimento,Alimentos,1354.64,45,Proveedor-Pacífi
+PROD-013,Artículo Alimento,Alimentos,905.68,9,Proveedor-Norte
+PROD-014,Artículo Jugueter,Juguetería,1064.15,23,Proveedor-Norte
+PROD-015,Artículo Hogar Re,Hogar,3905.85,29,Proveedor-Pacífi
+PROD-016,Artículo Deportes,Deportes,2878.8,28,Proveedor-Centro
+PROD-017,Artículo Ropa Re,Ropa,1630.95,47,Proveedor-Pacífi
+PROD-018,Artículo Jugueter,Juguetería,4218.11,46,Proveedor-Norte
+PROD-019,Artículo Alimento,Alimentos,2875.65,39,Proveedor-Centro
+PROD-020,Artículo Hogar Re,Hogar,2107.06,22,Proveedor-Centro
+PROD-021,Artículo Jugueter,Juguetería,1493.06,8,Proveedor-Centro
+PROD-022,Artículo Electróni,Electrónica,3632.45,30,Proveedor-Pacífi
+PROD-023,Artículo Electróni,Electrónica,988.87,41,Proveedor-Pacífi
+PROD-024,Artículo Hogar Re,Hogar,2966.7,30,Proveedor-Bajío
+PROD-025,Artículo Hogar Re,Hogar,1228.72,20,Proveedor-Pacífi
+PROD-026,Artículo Jugueter,Juguetería,2651.41,42,Proveedor-Bajío
+PROD-027,Artículo Ropa Re,Ropa,1025.98,13,Proveedor-Bajío
+PROD-028,Artículo Electróni,Electrónica,3413.23,12,Proveedor-Centro
+PROD-029,Artículo Jugueter,Juguetería,761.92,48,Proveedor-Bajío
+PROD-030,Artículo Alimento,Alimentos,332.7,29,Proveedor-Bajío
+PROD-031,Artículo Alimento,Alimentos,1168.79,40,Proveedor-Norte
+PROD-032,Artículo Jugueter,Juguetería,3257.21,48,Proveedor-Pacífi
+PROD-033,Artículo Jugueter,Juguetería,1563.78,23,Proveedor-Bajío
+PROD-034,Artículo Hogar Re,Hogar,2069.07,21,Proveedor-Centro
+PROD-035,Artículo Alimento,Alimentos,4111.19,45,Proveedor-Pacífi
+PROD-036,Artículo Jugueter,Juguetería,2309.1,17,Proveedor-Centro
+PROD-037,Artículo Ropa Re,Ropa,3443.17,39,Proveedor-Norte
+PROD-038,Artículo Alimento,Alimentos,1492.49,6,Proveedor-Norte
+PROD-039,Artículo Ropa Re,Ropa,3960.31,24,Proveedor-Centro
+PROD-040,Artículo Electróni,Electrónica,1121.88,41,Proveedor-Norte
+PROD-041,Artículo Electróni,Electrónica,3306.99,9,Proveedor-Centro
+PROD-042,Artículo Hogar Re,Hogar,2985.89,40,Proveedor-Centro
+PROD-043,Artículo Ropa Re,Ropa,2398.15,43,Proveedor-Bajío
+PROD-044,Artículo Hogar Re,Hogar,4183.67,49,Proveedor-Centro
+PROD-045,Artículo Jugueter,Juguetería,1437.14,47,Proveedor-Pacífi
+PROD-046,Artículo Deportes,Deportes,4053.28,33,Proveedor-Norte
+PROD-047,Artículo Hogar Re,Hogar,1049.9,26,Proveedor-Norte
+PROD-048,Artículo Alimento,Alimentos,2514.95,42,Proveedor-Centro
+PROD-049,Artículo Electróni,Electrónica,365.92,45,Proveedor-Norte
+PROD-050,Artículo Hogar Re,Hogar,349.93,7,Proveedor-Pacífi

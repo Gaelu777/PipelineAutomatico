@@ -1,0 +1,10 @@
+# salidas generadas por los scripts (se regeneran corriendo el pipeline)
+salidas_fase*/
+
+# pdf de la guia y de los datasets impresos
+*.pdf
+
+__pycache__/
+*.pyc
+.venv/
+venv/
