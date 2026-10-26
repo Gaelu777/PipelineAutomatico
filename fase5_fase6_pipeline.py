@@ -184,6 +184,7 @@ class TransaccionLimpia(BaseModel):
     # --- trazabilidad de fases previas
     flag_outlier: bool = False
     flag_huerfano: bool = False
+    flag_total_inconsistente: bool = False
 
     # ---------------------------------------------------------- validadores
 
@@ -253,8 +254,17 @@ class TransaccionLimpia(BaseModel):
                 f"precio de relleno {PRECIO_RELLENO:.2f} detectado, no es un precio real"
             )
 
-        # R3. Aritmetica interna. Si la Fase 3 recorto el monto, la incoherencia
-        #     la causamos nosotros y no se castiga la fila.
+        # R3a. Bot recortado. La Fase 3 baja el total inflado x80 al limite del IQR y
+        #      marca flag_outlier, asi que R3b no lo veria. La bandera de la Fase 2
+        #      (total reportado != unidades x precio) sobrevive al capping y lo delata.
+        if self.flag_total_inconsistente:
+            raise ValueError(
+                f"inflado x{FACTOR_BOT} (patron de bot): el total reportado no coincide con "
+                f"cantidad x precio; la Fase 3 lo recorto a {self.monto_mxn:.2f}"
+            )
+
+        # R3b. Aritmetica interna. Si la Fase 3 recorto el monto, la incoherencia
+        #      la causamos nosotros y no se castiga la fila.
         if not self.flag_outlier:
             esperado = round(self.cantidad * self.precio_unitario_mxn, 2)
             if abs(esperado - self.monto_mxn) > TOLERANCIA_PESOS:
@@ -310,6 +320,11 @@ def etiquetar_motivo(texto: str) -> str:
 def preparar(df: pd.DataFrame) -> pd.DataFrame:
     """Deriva las columnas que el esquema necesita y marca duplicados de negocio."""
     df = df.copy()
+
+    # Solo online la trae; en tienda fisica queda vacia y se toma como False.
+    if "flag_total_inconsistente" not in df.columns:
+        df["flag_total_inconsistente"] = False
+    df["flag_total_inconsistente"] = df["flag_total_inconsistente"].fillna(False).astype(bool)
 
     # El correo viaja en 'cliente' cuando la fuente es online.
     df["correo"] = np.where(
@@ -431,6 +446,8 @@ def pruebas_de_estres() -> pd.DataFrame:
                                    "monto_facturable_mxn": 1000.0}),
         ("total inflado x80 (bot)", {"monto_mxn": 16000.0, "monto_facturable_mxn": 16000.0}),
         ("total inconsistente", {"monto_mxn": 999.0, "monto_facturable_mxn": 999.0}),
+        ("bot recortado por capping", {"flag_outlier": True, "flag_total_inconsistente": True,
+                                       "monto_mxn": 8100.74, "monto_facturable_mxn": 8100.74}),
         ("correo con doble arroba", {"canal": "ONLINE", "correo": "usuario@@gmail..com"}),
         ("correo sin arroba", {"canal": "ONLINE", "correo": "correo_invalido.com"}),
         ("online sin correo", {"canal": "ONLINE", "correo": None}),

@@ -153,9 +153,14 @@ Diez tipos de error silencioso detectados. Todos pasan una validación de tipo y
 | E-09 | Filas que el propio capping dejó incoherentes | 40 | La incoherencia la causamos nosotros al recortar el monto |
 | E-10 | Cancelados que conservan importe cobrado | 119 | Estatus válido y monto válido; la contradicción está en leerlos juntos |
 
-Dos hallazgos cambiaron decisiones de diseño:
+Tres hallazgos cambiaron decisiones de diseño:
 - **E-09** obligó a que el validador aritmético respete `flag_outlier`. Si la Fase 3 recortó el monto, la fila
   ya no cuadra por culpa nuestra, no del origen; castigarla sería mandar a cuarentena un dato que nosotros rompimos.
+- **E-02** (bots) necesitó una regla propia, R3a. La Fase 3 recorta el total inflado ×80 al límite del IQR y marca
+  `flag_outlier`, así que R3b lo dejaba pasar: 8 de los 12 bots llegaban a `transacciones_limpias` con un monto falso
+  de 8,100.74. La bandera `flag_total_inconsistente` de la Fase 2 sobrevive al capping, se lleva al unificado y R3a
+  rechaza todo pedido que la traiga. Efecto: 0 de 12 bots en la tabla limpia (8 etiquetados como bot; los otros 4
+  ya caían por llave huérfana o correo).
 - **E-10** no se manda a cuarentena. 119 registros (10%) son demasiados para descartar y un pedido cancelado
   sigue siendo un hecho real del negocio. Se resuelve con la columna derivada `monto_facturable_mxn`, que vale 0
   cuando el estatus es CANCELADO o DEVUELTO. El dato se conserva; lo que se corrige es cuánto factura.
@@ -168,7 +173,8 @@ para lo que ningún campo puede validar solo.
 |---|---|---|
 | R1 | La llave no puede ser huérfana | E-04 |
 | R2 | `precio_unitario_mxn` distinto de 500.00 exacto | E-03 |
-| R3 | `monto = cantidad × precio` (± 0.01), salvo si `flag_outlier` | E-01, E-02, E-09 |
+| R3a | Un pedido con `flag_total_inconsistente` (bot) va a cuarentena aunque ya esté recortado | E-02 |
+| R3b | `monto = cantidad × precio` (± 0.01), salvo si `flag_outlier` | E-01, E-09 |
 | R4 | Estatus no facturable ⇒ `monto_facturable_mxn = 0` | E-10 |
 | R5 | Venta ONLINE obliga correo de contacto | E-05 |
 | Campo | `id_producto` cumple `^PROD-\d{3}$` | E-04 |
@@ -181,8 +187,8 @@ Cada fila se valida aislada dentro de `try/except ValidationError`. Una fila cor
 
 | Resultado | Registros | Porcentaje |
 |---|---|---|
-| transacciones_limpias | 1,057 | 88.90% |
-| cuarentena_errores | 132 | 11.10% |
+| transacciones_limpias | 1,049 | 88.23% |
+| cuarentena_errores | 140 | 11.77% |
 
 | Causa de rechazo | Registros |
 |---|---|
@@ -190,6 +196,7 @@ Cada fila se valida aislada dentro de `try/except ValidationError`. Una fila cor
 | Correo con sintaxis inválida | 37 |
 | Total distinto de cantidad × precio | 25 |
 | Correo con `@@` o `..` | 11 |
+| Total inflado ×80 (bot) | 8 |
 | Duplicado de negocio | 2 |
 
 Nota de lectura: los 60 huérfanos del unificado están los 60 en cuarentena, pero 3 aparecen etiquetados con su
@@ -198,12 +205,12 @@ refleja el primer error encontrado, no el único. La columna `motivo_rechazo_cua
 Verificación: 0 huérfanos se filtraron a `transacciones_limpias`.
 
 ### F6-4. Pruebas de estrés
-24 casos de inyección deliberada: texto en campos numéricos, cantidades negativas y cero, fecha 31/02,
+25 casos de inyección deliberada: texto en campos numéricos, cantidades negativas y cero, fecha 31/02,
 fechas en 1999 y 2099, id mal formado, llave huérfana, precio de relleno, total inflado ×80, correo con doble
 arroba, canal inexistente, estatus fuera de catálogo, segmento inválido, normalizado fuera de rango, campo
 obligatorio ausente y una fila completamente nula.
 
-Resultado: 23 rechazados con mensaje explícito, 1 aceptado (el caso de control válido), **0 excepciones no
+Resultado: 24 rechazados con mensaje explícito, 1 aceptado (el caso de control válido), **0 excepciones no
 controladas**. El criterio de éxito no es que el pipeline los procese, es que los rechace sin colapsar.
 
 ### F7-1. Carga transaccional
@@ -216,17 +223,17 @@ Cualquier excepción dispara `rollback` y la tabla queda como estaba.
 
 | Tabla | Filas |
 |---|---|
-| transacciones_limpias | 1,057 |
-| cuarentena_errores | 132 |
+| transacciones_limpias | 1,049 |
+| cuarentena_errores | 140 |
 | total | 1,189 (cuadra con la entrada) |
 
 ### F7-2. Prueba de rollback
 Se intenta insertar una fila con `cantidad = -99`, que viola el `CHECK (cantidad > 0)`.
-Resultado: `IntegrityError` capturado, `rollback` aplicado, conteo antes y después igual a 1,057.
+Resultado: `IntegrityError` capturado, `rollback` aplicado, conteo antes y después igual a 1,049.
 La atomicidad queda demostrada contra la base real, no asumida.
 
 ### F7-3. Resultado de negocio
-Monto facturable total: $4,107,291.48 MXN sobre 1,057 ventas válidas.
+Monto facturable total: $4,074,888.52 MXN sobre 1,049 ventas válidas.
 
 | Canal | Segmento | Pedidos | Facturado |
 |---|---|---|---|
@@ -235,14 +242,15 @@ Monto facturable total: $4,107,291.48 MXN sobre 1,057 ventas válidas.
 | FÍSICA | ALTO | 265 | $2,521,190.44 |
 | ONLINE | BAJO | 202 | $138,963.91 |
 | ONLINE | MEDIO | 192 | $354,570.17 |
-| ONLINE | ALTO | 103 | $448,525.29 |
+| ONLINE | ALTO | 95 | $416,122.33 |
 
-Lectura: la tienda física concentra el 76.3% del importe facturado con menos pedidos, y su segmento ALTO solo
+Lectura: la tienda física concentra el 77.7% del importe facturado con menos pedidos, y su segmento ALTO solo
 (265 pedidos) vale más que todo el canal online junto. El online vende volumen en el segmento BAJO.
 
 ### Verificación de las fases 5 a 7
 - Valores de `monto_mxn_norm` fuera de [0, 1]: 0.
-- Cuadre de filas: 1,057 + 132 = 1,189, igual a la entrada.
+- Cuadre de filas: 1,049 + 140 = 1,189, igual a la entrada.
+- Bots (`flag_total_inconsistente`) en `transacciones_limpias`: 0 de 12.
 - Huérfanos en la tabla limpia: 0.
-- Excepciones no controladas en las pruebas de estrés: 0 de 24 casos.
+- Excepciones no controladas en las pruebas de estrés: 0 de 25 casos.
 - Rollback verificado contra la base: tabla intacta tras violar un CHECK.

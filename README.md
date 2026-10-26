@@ -45,13 +45,13 @@ y aun así son falsos. Sus hallazgos son el origen de las reglas de la Fase 6.
 |---|---|
 | Crudo (620 física + 600 online) | 1,220 |
 | Tras limpieza e integración (Fases 1-4) | 1,189 |
-| `transacciones_limpias` | 1,057 (88.90%) |
-| `cuarentena_errores` | 132 (11.10%) |
+| `transacciones_limpias` | 1,049 (88.23%) |
+| `cuarentena_errores` | 140 (11.77%) |
 
-Motivos de cuarentena: 57 llaves huérfanas, 48 correos inválidos, 25 totales que no cuadran
-y 2 duplicados de negocio. Monto facturable validado: $4,107,291.48 MXN.
+Motivos de cuarentena: 57 llaves huérfanas, 48 correos inválidos, 25 totales que no cuadran,
+8 bots con total inflado x80 y 2 duplicados de negocio. Monto facturable validado: $4,074,888.52 MXN.
 
-Pruebas de estrés: 24 casos de inyección de datos corruptos, 0 excepciones no controladas.
+Pruebas de estrés: 25 casos de inyección de datos corruptos, 0 excepciones no controladas.
 Rollback verificado contra la base de datos real.
 
 Las carpetas `salidas_fase*` no se versionan: se regeneran con los comandos de arriba.

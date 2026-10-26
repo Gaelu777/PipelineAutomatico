@@ -107,9 +107,9 @@ tabla(["Etapa", "Registros", "Porcentaje"],
        ["transacciones_limpias", f"{res['validos']:,}", f"{res['tasa_aceptacion_pct']}%"],
        ["cuarentena_errores", f"{res['cuarentena']:,}", f"{round(100 - res['tasa_aceptacion_pct'], 2)}%"]])
 
-P("El resultado que importa para la defensa no es la tasa de aceptación, sino que el pipeline procesó "
-  "los 1,189 registros sin detenerse una sola vez. Las 24 pruebas de estrés con datos deliberadamente "
-  "corruptos terminaron con cero excepciones no controladas.")
+P(f"El resultado que importa para la defensa no es la tasa de aceptación, sino que el pipeline procesó "
+  f"los {res['entrada']:,} registros sin detenerse una sola vez. Las {len(estres)} pruebas de estrés con datos "
+  f"deliberadamente corruptos terminaron con cero excepciones no controladas.")
 
 # ------------------------------------------------------- 2. datos engañosos
 H("2. Diagnóstico previo: datos que parecen correctos pero no lo son")
@@ -124,10 +124,15 @@ tabla(["Cód.", "Hallazgo", "Afectados", "Por qué engaña"],
        for _, r in enganos.iterrows()],
       "La columna 'Afectados' se mide sobre la fuente donde aplica cada regla, por eso los totales no suman.")
 
-P("Dos de estos hallazgos cambiaron el diseño del validador:")
+P("Tres de estos hallazgos cambiaron el diseño del validador:")
 B("E-09 obligó a que la regla aritmética respete flag_outlier. Si la Fase 3 recortó el monto por IQR, la fila "
   "deja de cumplir monto = cantidad × precio por culpa de nuestra propia transformación, no del sistema origen. "
   "Mandarla a cuarentena sería castigar un dato que nosotros rompimos.")
+B("E-02 (bots) obligó a una regla propia. La Fase 3 recorta el total inflado x80 al límite del IQR y marca "
+  "flag_outlier, y la regla aritmética se salta las filas recortadas (E-09), así que 8 de los 12 bots llegaban a "
+  "la tabla limpia con un monto falso de 8,100.74. La bandera flag_total_inconsistente de la Fase 2 (total "
+  "reportado distinto de unidades × precio) sobrevive al capping, se lleva al archivo unificado y la regla R3a "
+  "manda a cuarentena todo pedido que la traiga.")
 B("E-10 no se manda a cuarentena. 119 registros con estatus CANCELADO conservan importe; descartar el 10% del "
   "lote sería destructivo y un pedido cancelado sigue siendo un hecho real. Se resuelve con la columna derivada "
   "monto_facturable_mxn, que vale 0 cuando el estatus es CANCELADO o DEVUELTO. El dato se conserva; lo que se "
@@ -180,7 +185,8 @@ P("Se definió la clase TransaccionLimpia(BaseModel) con validadores por campo (
 tabla(["Regla", "Qué exige", "Hallazgo que la origina"],
       [["R1", "La llave de producto no puede ser huérfana", "E-04"],
        ["R2", "precio_unitario_mxn distinto de 500.00 exacto", "E-03"],
-       ["R3", "monto = cantidad × precio (± $0.01), salvo si flag_outlier", "E-01, E-02, E-09"],
+       ["R3a", "Un pedido con flag_total_inconsistente (bot, aunque ya esté recortado) va a cuarentena", "E-02"],
+       ["R3b", "monto = cantidad × precio (± $0.01), salvo si flag_outlier", "E-01, E-09"],
        ["R4", "Estatus no facturable implica monto_facturable_mxn = 0", "E-10"],
        ["R5", "Toda venta ONLINE exige correo de contacto", "E-05"],
        ["Campo", "id_producto cumple ^PROD-\\d{3}$", "E-04"],
@@ -250,7 +256,7 @@ P("Cada tabla se carga dentro de una única transacción: BEGIN, DELETE previo (
 P("No basta con afirmar que el rollback funciona: se probó contra la base real. Se "
   "intentó insertar un registro con cantidad = −99, que viola el CHECK (cantidad > 0). El motor lanzó "
   "IntegrityError, el pipeline lo capturó, ejecutó rollback y el conteo de la tabla antes y después de la "
-  "operación fue idéntico: 1,057 filas. La atomicidad queda demostrada, no asumida.",
+  f"operación fue idéntico: {res['validos']:,} filas. La atomicidad queda demostrada, no asumida.",
   "Prueba explícita: ")
 
 H("5.3 Resultado de negocio", 2)

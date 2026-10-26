@@ -92,7 +92,7 @@ ESQUEMA = {
         "estatus":             {"transacciones_atm": "resultado", "transferencias_digitales": "status"}},
 }
 COMUNES = ["fecha", "moneda_original", "campos_imputados", "flag_outlier", "columnas_recortadas",
-           "flag_fecha_invalida", "flag_huerfano", "motivo_rechazo_cuarentena"]
+           "flag_fecha_invalida", "flag_huerfano", "flag_total_inconsistente", "motivo_rechazo_cuarentena"]
 
 ISO_FECHA = re.compile(r"\d{4}-\d{2}-\d{2}")
 
