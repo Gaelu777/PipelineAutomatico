@@ -102,3 +102,147 @@ Efecto: 1,189 filas (589 física y 600 online).
 - Cuadre de filas: tienda 600 - 11 = 589; online 600 - 0 = 600.
 - Robustez: se probó con texto en columnas numéricas, fecha 31/02, epoch absurdo, moneda EUR y columnas faltantes;
   el script no se detiene y lo registra en `log_fase4.csv`.
+
+## Fases 5, 6 y 7: Escalamiento, validación Pydantic y carga a BD
+
+Scripts: `fase5_fase6_pipeline.py` y `fase7_carga_bd.py`. Entrada: `unificado_grupo1.csv` (1,189 filas).
+Las reglas de validación no se inventaron: salen del análisis forense de `utilidades/forense_datos_enganosos.py`,
+que busca específicamente los errores que **no** se ven en un `head()` ni los detecta un chequeo de tipos.
+
+### F5-1. Escalamiento Min-Max
+`monto_mxn` y `cantidad` se llevan al rango [0, 1] con (x − mín) / (máx − mín).
+
+| Variable | Mínimo | Máximo | Resultado |
+|---|---|---|---|
+| monto_mxn | 332.67 | 16,510.02 | monto_mxn_norm en [0, 1] |
+| cantidad | 1 | 8 | cantidad_norm en [0, 1] |
+
+Por qué después del capping: Min-Max usa únicamente el mínimo y el máximo, así que es la técnica más frágil
+ante outliers. Con el monto sin recortar, el máximo era 2,109,055 y el 99% de las ventas quedaba comprimido
+por debajo de 0.01. Recortar primero (Fase 3) y escalar después reparte la escala entre los datos reales.
+Verificación: 0 valores fuera de [0, 1].
+
+### F5-2. Discretización en 3 segmentos
+`monto_mxn` se parte en BAJO, MEDIO y ALTO con `pd.qcut(q=3)` (terciles).
+
+| Segmento | Registros | Rango real (MXN) | Promedio |
+|---|---|---|---|
+| BAJO | 403 | 332.67 – 2,016.30 | 1,139.72 |
+| MEDIO | 391 | 2,048.98 – 4,138.14 | 3,008.55 |
+| ALTO | 395 | 4,183.67 – 16,510.02 | 8,555.09 |
+
+Por qué terciles y no cortes fijos en pesos: el catálogo mezcla categorías con precios muy distintos
+(Alimentos contra Electrónica). Un corte fijo metería una categoría entera en el mismo segmento y dejaría
+grupos vacíos. Los terciles garantizan tres grupos de tamaño comparable (403/391/395) y por lo tanto con
+poder estadístico similar. Los cortes quedan registrados en `parametros_escalamiento.json` para que la
+segmentación sea reproducible y auditable.
+
+### F6-1. Datos que parecen correctos pero no lo son
+Diez tipos de error silencioso detectados. Todos pasan una validación de tipo y formato; todos son falsos.
+
+| Código | Hallazgo | Afectados | Por qué engaña |
+|---|---|---|---|
+| E-01 | Total distinto de cantidad × precio | 12 | Los tres campos son números válidos y positivos; solo se ve al recalcular |
+| E-02 | Bots con total inflado exactamente ×80 | 12 | El factor es constante y exacto, parecen ventas grandes legítimas |
+| E-03 | Precio 500.00 exacto (valor de relleno) | 29 | 500 es un importe plausible; lo delata repetirse 29 veces idéntico |
+| E-04 | Llaves huérfanas con formato perfecto | 62 | Cumplen `PROD-NNN` y pasan cualquier regex; el producto no existe |
+| E-05 | Correos que una validación ingenua aprueba | 11 | `usuario@@gmail..com` tiene arroba, dominio y `.com` |
+| E-06 | Duplicados de negocio con folio distinto | 40 | `drop_duplicates()` no los toca porque el id_ticket es único |
+| E-07 | Fechas válidas fuera del periodo operativo | 0 | Son fechas reales del calendario, el problema es el rango |
+| E-08 | Importes en USD con magnitud de pesos | 0 | El número y la etiqueta son válidos por separado |
+| E-09 | Filas que el propio capping dejó incoherentes | 40 | La incoherencia la causamos nosotros al recortar el monto |
+| E-10 | Cancelados que conservan importe cobrado | 119 | Estatus válido y monto válido; la contradicción está en leerlos juntos |
+
+Dos hallazgos cambiaron decisiones de diseño:
+- **E-09** obligó a que el validador aritmético respete `flag_outlier`. Si la Fase 3 recortó el monto, la fila
+  ya no cuadra por culpa nuestra, no del origen; castigarla sería mandar a cuarentena un dato que nosotros rompimos.
+- **E-10** no se manda a cuarentena. 119 registros (10%) son demasiados para descartar y un pedido cancelado
+  sigue siendo un hecho real del negocio. Se resuelve con la columna derivada `monto_facturable_mxn`, que vale 0
+  cuando el estatus es CANCELADO o DEVUELTO. El dato se conserva; lo que se corrige es cuánto factura.
+
+### F6-2. Esquema Pydantic y reglas cruzadas
+Clase `TransaccionLimpia(BaseModel)` con `@field_validator` por campo y `@model_validator(mode="after")`
+para lo que ningún campo puede validar solo.
+
+| Regla | Qué exige | Origen |
+|---|---|---|
+| R1 | La llave no puede ser huérfana | E-04 |
+| R2 | `precio_unitario_mxn` distinto de 500.00 exacto | E-03 |
+| R3 | `monto = cantidad × precio` (± 0.01), salvo si `flag_outlier` | E-01, E-02, E-09 |
+| R4 | Estatus no facturable ⇒ `monto_facturable_mxn = 0` | E-10 |
+| R5 | Venta ONLINE obliga correo de contacto | E-05 |
+| Campo | `id_producto` cumple `^PROD-\d{3}$` | E-04 |
+| Campo | Correo con regex anclado, rechaza `@@` y `..` | E-05 |
+| Campo | `fecha` dentro de [2026-01-01, 2026-12-31] | E-07 |
+| Campo | `estatus` dentro del catálogo de 6 valores | — |
+
+### F6-3. Bifurcación a cuarentena
+Cada fila se valida aislada dentro de `try/except ValidationError`. Una fila corrupta nunca detiene el lote.
+
+| Resultado | Registros | Porcentaje |
+|---|---|---|
+| transacciones_limpias | 1,057 | 88.90% |
+| cuarentena_errores | 132 | 11.10% |
+
+| Causa de rechazo | Registros |
+|---|---|
+| Llave huérfana (producto inexistente) | 57 |
+| Correo con sintaxis inválida | 37 |
+| Total distinto de cantidad × precio | 25 |
+| Correo con `@@` o `..` | 11 |
+| Duplicado de negocio | 2 |
+
+Nota de lectura: los 60 huérfanos del unificado están los 60 en cuarentena, pero 3 aparecen etiquetados con su
+error de correo. Pydantic evalúa los validadores de campo antes que el `model_validator`, así que la etiqueta
+refleja el primer error encontrado, no el único. La columna `motivo_rechazo_cuarentena` conserva la lista completa.
+Verificación: 0 huérfanos se filtraron a `transacciones_limpias`.
+
+### F6-4. Pruebas de estrés
+24 casos de inyección deliberada: texto en campos numéricos, cantidades negativas y cero, fecha 31/02,
+fechas en 1999 y 2099, id mal formado, llave huérfana, precio de relleno, total inflado ×80, correo con doble
+arroba, canal inexistente, estatus fuera de catálogo, segmento inválido, normalizado fuera de rango, campo
+obligatorio ausente y una fila completamente nula.
+
+Resultado: 23 rechazados con mensaje explícito, 1 aceptado (el caso de control válido), **0 excepciones no
+controladas**. El criterio de éxito no es que el pipeline los procese, es que los rechace sin colapsar.
+
+### F7-1. Carga transaccional
+SQLite con dos tablas obligatorias. La integridad se declara en el esquema, no solo en Python:
+`PRIMARY KEY` en `id_registro`, `CHECK` en cantidad, precios, rango del normalizado, canal y segmento,
+`GLOB 'PROD-[0-9][0-9][0-9]'` en la llave de producto, y `NOT NULL` en los campos que el negocio exige.
+
+Cada tabla se carga en una sola transacción: `BEGIN`, `DELETE` previo (idempotencia), `executemany`, `commit`.
+Cualquier excepción dispara `rollback` y la tabla queda como estaba.
+
+| Tabla | Filas |
+|---|---|
+| transacciones_limpias | 1,057 |
+| cuarentena_errores | 132 |
+| total | 1,189 (cuadra con la entrada) |
+
+### F7-2. Prueba de rollback
+Se intenta insertar una fila con `cantidad = -99`, que viola el `CHECK (cantidad > 0)`.
+Resultado: `IntegrityError` capturado, `rollback` aplicado, conteo antes y después igual a 1,057.
+La atomicidad queda demostrada contra la base real, no asumida.
+
+### F7-3. Resultado de negocio
+Monto facturable total: $4,107,291.48 MXN sobre 1,057 ventas válidas.
+
+| Canal | Segmento | Pedidos | Facturado |
+|---|---|---|---|
+| FÍSICA | BAJO | 134 | $163,169.40 |
+| FÍSICA | MEDIO | 161 | $480,872.27 |
+| FÍSICA | ALTO | 265 | $2,521,190.44 |
+| ONLINE | BAJO | 202 | $138,963.91 |
+| ONLINE | MEDIO | 192 | $354,570.17 |
+| ONLINE | ALTO | 103 | $448,525.29 |
+
+Lectura: la tienda física concentra el 76.3% del importe facturado con menos pedidos, y su segmento ALTO solo
+(265 pedidos) vale más que todo el canal online junto. El online vende volumen en el segmento BAJO.
+
+### Verificación de las fases 5 a 7
+- Valores de `monto_mxn_norm` fuera de [0, 1]: 0.
+- Cuadre de filas: 1,057 + 132 = 1,189, igual a la entrada.
+- Huérfanos en la tabla limpia: 0.
+- Excepciones no controladas en las pruebas de estrés: 0 de 24 casos.
+- Rollback verificado contra la base: tabla intacta tras violar un CHECK.
