@@ -22,3 +22,5 @@ qa/tmp/
 # corridas del motor universal (archivos subidos desde el panel)
 corridas/
 qa/tmp_tortura/
+qa/tmp_extensiones/
+qa/tmp_gigante/
