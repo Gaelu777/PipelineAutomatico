@@ -3,6 +3,7 @@
 **Proyecto Integrador: Pipeline ETL Robusto con Zona de Cuarentena**
 Ingeniería de Datos (ATD-2602) · TecNM Campus Colima · Grupo 1 (LCS2), Retail omnicanal
 Prof. Armando Román Gallardo Heredia · Exposición: 29 de octubre de 2026, 14:00 h
+Equipo (orden alfabético): Angel Salvador Alvarez · Gael Alexandro Cortez Sarmienta · Sebastian Grageda Sandoval
 
 ---
 
@@ -197,18 +198,25 @@ Lo que las pruebas **encontraron y se corrigió**: el `KeyError` con otros nombr
 
 ---
 
-## 7. Guion de 5 a 6 minutos
+## 7. Guion de 5 minutos (`PRESENTACION_EXPOSICION_5MIN.pptx`)
 
-| Tiempo | Quién | Qué dice | Qué se muestra |
+Nueve diapositivas; el guion completo de cada una está en las **notas del orador** del PowerPoint.
+Los nombres de la portada van en orden alfabético por primer apellido; el reparto de diapositivas
+es una sugerencia: ajústenlo al rol que cada quien tuvo.
+
+| Tiempo | Quién | Diapositiva | Idea que tiene que quedar |
 |---|---|---|---|
-| 0:00 – 0:40 | Integrante 1 | La explicación simple de los dos cuadernos y la banda de siete filtros | Panel · **Resumen** |
-| 0:40 – 1:15 | Integrante 1 | "De 1,189 registros, 1,049 pasaron y 140 quedaron en cuarentena con su motivo. Ninguno se perdió." | KPIs y dona |
-| 1:15 – 2:15 | Integrante 1 | Fases 1 a 3: vacíos ocultos, MCAR/MAR con chi², recalcular antes de imputar, mediana, IQR con capping | **Las 7 fases** |
-| 2:15 – 3:00 | Integrante 2 | Fases 4 y 5: fechas y epoch en hora de México, USD→MXN antes del IQR, huérfanos, Min-Max después del capping, terciles | **Negocio** |
-| 3:00 – 3:45 | Integrante 2 | Los datos que parecen correctos: precio 500 exacto, bots ×80, `@@`, cancelados | **Datos engañosos** |
-| 3:45 – 4:45 | Integrante 3 | Pydantic y cuarentena, historia de R3a, CHECK y rollback probado, 200 verificaciones y 1 M de filas | **Cuarentena** y **QA a escala** |
-| 4:45 – 5:45 | Integrante 3 | "Profe, suba el dataset que quiera." Demostración en vivo | **Prueba tu dataset** |
-| 5:45 – 6:00 | Cualquiera | Cierre: "Una cuarentena bien diseñada aísla lo que no se puede confiar, no todo lo que no encaja." | — |
+| 0:00 – 0:10 | Integrante 1 | 1 · Portada | Pipeline ETL con cuarentena: ningún registro corrupto detiene el lote |
+| 0:10 – 0:40 | Integrante 1 | 2 · El problema | 3 fuentes, 1,220 registros y siete tipos de suciedad; 0 excepciones |
+| 0:40 – 1:10 | Integrante 1 | 3 · Arquitectura | 1,220 → 1,189 → 1,049 limpias + 140 en cuarentena; 1,049 + 140 = 1,189 |
+| 1:10 – 1:45 | Integrante 1 | 4 · Fases 1–3 | Recalcular antes de imputar, mediana (16,991 contra 3,622), capping 2.1 M → 16,510 |
+| 1:45 – 2:30 | Integrante 2 | 5 · Fases 4–5 | Hora de México (49 de 208), USD a 19.50 antes del IQR, 27 + 33 huérfanos, terciles |
+| 2:30 – 3:05 | Integrante 3 | 6 · Fase 6 | Reglas R1–R5 nacidas del forense; R3a: 8 de 12 bots se colaban; 140 con motivo |
+| 3:05 – 3:35 | Integrante 3 | 7 · Fase 7 y robustez | Commit/rollback probado con −99; 25 de estrés, 200 verificaciones, 21 torturas: 0 fallas |
+| 3:35 – 4:10 | Quien hace la demo | 8 · Más allá de lo pedido | Motor universal, más de 5 GB por bloques (5.29 GB probado), config.yaml, Antes / después |
+| 4:10 – 5:00 | Quien hace la demo | 9 · Resultado y demo | $4,074,888.52; tres conclusiones; demo: Resumen → Antes / después → Prueba tu dataset |
+
+Frase de cierre: *"Una cuarentena bien diseñada aísla lo que no se puede confiar, no todo lo que no encaja."*
 
 Para la demo, si el profesor no trae archivo, usar `demo/profe_sucio.xlsx` (5,000 filas con 31 bots, 21 correos malos y 11 imposibles plantados: el motor encuentra exactamente esos).
 

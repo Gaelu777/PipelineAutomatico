@@ -1,0 +1,47 @@
+{
+ "verdad": {
+  "correo": 17982,
+  "imposible": 18037,
+  "bot": 17822,
+  "filas": 18000000,
+  "con_error": 53841,
+  "gb": 5.29
+ },
+ "resultado": {
+  "ok": true,
+  "error": null,
+  "totales": {
+   "entrada": 18000000,
+   "limpias": 17946159,
+   "cuarentena": 53841,
+   "tasa_aceptacion": 99.7
+  },
+  "seg": 2479.6,
+  "pico_mb": 0,
+  "causas": {
+   "ventas_gigantes": {
+    "Valor imposible": 18037,
+    "Correo invalido": 17982,
+    "Total inflado (bot)": 17822
+   }
+  },
+  "bloques": {
+   "ventas_gigantes": {
+    "mb": 5415.7,
+    "filas_por_bloque": 200000,
+    "bloques": 90,
+    "pasadas": 3,
+    "muestra_tipos": 100000,
+    "cuantiles_exactos": false,
+    "lineas_omitidas": 0,
+    "lectura_cortada": null,
+    "segundos": {
+     "pasada1": 285.62,
+     "pasada2": 537.54,
+     "pasada3": 1646.35,
+     "total": 2477.91
+    }
+   }
+  }
+ }
+}
