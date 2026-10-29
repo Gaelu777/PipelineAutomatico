@@ -223,6 +223,145 @@ def api_top_productos() -> list[dict]:
         "ORDER BY facturado DESC LIMIT 12")
 
 
+# ================================================== comparacion antes/despues
+# Columna de transacciones_limpias <- columna cruda de cada canal (mismo esquema que la
+# Fase 4). Un canal ausente significa que esa fuente no trae la columna.
+COMPARACION_OFICIAL = [
+    ("id_registro", "id", {"FISICA": "id_ticket", "ONLINE": "order_id"}),
+    ("id_producto", "id", {"FISICA": "id_producto", "ONLINE": "product_id"}),
+    ("cliente", "id", {"FISICA": "id_cliente"}),
+    ("correo", "correo", {"ONLINE": "customer_email"}),
+    ("cantidad", "numerico", {"FISICA": "cantidad", "ONLINE": "units"}),
+    ("precio_unitario_mxn", "numerico", {"FISICA": "precio_unitario", "ONLINE": "unit_price"}),
+    ("monto_mxn", "numerico", {"FISICA": "monto_total_mxn", "ONLINE": "total_amount"}),
+    ("moneda", "categorico", {"ONLINE": "currency"}),
+    ("fecha", "fecha", {"FISICA": "fecha_venta", "ONLINE": "order_timestamp"}),
+    ("metodo_pago", "categorico", {"FISICA": "metodo_pago", "ONLINE": "payment_gateway"}),
+    ("estatus", "categorico", {"ONLINE": "order_status"}),
+]
+FUENTES_CRUDAS = {"FISICA": "ventas_tienda_fisica.csv", "ONLINE": "ventas_online.json"}
+VACIOS_CRUDOS = {"", "NA", "N/A", "NULL", "NONE", "NAN"}   # los mismos de la Fase 1
+PATRONES_FECHA = [   # mismos patrones que motor/pipeline_universal.py
+    ("AAAA-MM-DD", r"^\d{4}-\d{2}-\d{2}$"),
+    ("AAAA-MM-DD con hora", r"^\d{4}-\d{2}-\d{2}[T ]\d{1,2}:\d{2}"),
+    ("DD/MM/AAAA", r"^\d{1,2}/\d{1,2}/\d{4}$"),
+    ("DD/MM/AAAA con hora", r"^\d{1,2}/\d{1,2}/\d{4} \d{1,2}:\d{2}"),
+    ("DD-MM-AAAA", r"^\d{1,2}-\d{1,2}-\d{4}$"),
+    ("AAAA/MM/DD", r"^\d{4}/\d{1,2}/\d{1,2}"),
+    ("epoch", r"^\d{9,13}(\.0+)?$"),
+]
+RE_CORREO_PANEL = r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$"
+
+
+def _es_nulo(v) -> bool:
+    return v is None or (isinstance(v, float) and v != v) or \
+        (isinstance(v, str) and v.strip().upper() in VACIOS_CRUDOS)
+
+
+def _a_float(v):
+    if isinstance(v, bool):
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(str(v).replace(",", "").replace("$", "").strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def _cuantil(orden: list[float], q: float) -> float:
+    """Interpolacion lineal, la misma que pandas usa por defecto."""
+    h = (len(orden) - 1) * q
+    i = int(h)
+    return orden[i] if i + 1 >= len(orden) else orden[i] + (h - i) * (orden[i + 1] - orden[i])
+
+
+def _estadisticas(valores: list, tipo: str) -> dict:
+    import math
+    import re
+    import statistics
+    from collections import Counter
+
+    n = len(valores)
+    nn = [v for v in valores if not _es_nulo(v)]
+    textos = [str(v).strip() for v in nn]
+    d: dict = {"n": n, "nulos": n - len(nn), "pct_nulos": round(100 * (n - len(nn)) / n, 2) if n else 0,
+               "distintos": len(set(textos))}
+    if tipo == "numerico":
+        nums = [_a_float(v) for v in nn]
+        d["no_numericos"] = sum(1 for x in nums if x is None)
+        fin = sorted(x for x in nums if x is not None and math.isfinite(x))
+        d["no_positivos"] = sum(1 for x in fin if x <= 0)
+        if fin:
+            d.update(min=round(fin[0], 4), q1=round(_cuantil(fin, .25), 4),
+                     mediana=round(_cuantil(fin, .5), 4), media=round(math.fsum(fin) / len(fin), 4),
+                     q3=round(_cuantil(fin, .75), 4), max=round(fin[-1], 4),
+                     desv=round(statistics.stdev(fin), 4) if len(fin) > 1 else 0.0)
+    elif tipo == "fecha":
+        formatos: dict[str, int] = {}
+        for t in textos:
+            etq = next((e for e, p in PATRONES_FECHA if re.match(p, t)), "otro")
+            formatos[etq] = formatos.get(etq, 0) + 1
+        d["formatos"] = formatos
+    elif tipo == "correo":
+        v = [t.lower() for t in textos if t.upper() != "ANONIMO"]
+        d["invalidos"] = sum(1 for t in v if "@@" in t or ".." in t or not re.match(RE_CORREO_PANEL, t))
+    if tipo == "categorico" or (tipo != "numerico" and d["distintos"] <= 12):
+        d["top"] = [[k, c] for k, c in Counter(textos).most_common(8)]
+    return d
+
+
+def _leer_crudos() -> tuple[dict[str, list[dict]], str]:
+    """Filas crudas por canal. Prefiere datasets_canon/ (salida de la Fase 0)."""
+    base = RAIZ / "datasets_canon"
+    if not (base / FUENTES_CRUDAS["FISICA"]).exists():
+        base = RAIZ / "datasets"
+    filas: dict[str, list[dict]] = {}
+    for canal, archivo in FUENTES_CRUDAS.items():
+        ruta = base / archivo
+        if not ruta.exists():
+            filas[canal] = []
+        elif ruta.suffix == ".json":
+            datos = leer_json(ruta, [])
+            filas[canal] = datos if isinstance(datos, list) else []
+        else:
+            filas[canal] = leer_csv(ruta)
+    return filas, base.name
+
+
+def api_comparacion(canal: str | None = None) -> dict:
+    """
+    Antes = datos crudos tal como llegaron; despues = transacciones_limpias.
+    Cada columna se compara solo con los canales cuya fuente la trae.
+    """
+    canal = (canal or "TODOS").upper()
+    canales = ["FISICA", "ONLINE"] if canal not in ("FISICA", "ONLINE") else [canal]
+    crudos, carpeta = _leer_crudos()
+    limpias = consulta_bd("SELECT * FROM transacciones_limpias")
+    columnas = []
+    for destino, tipo, origen in COMPARACION_OFICIAL:
+        cs = [c for c in canales if c in origen]
+        if not cs:
+            continue
+        antes = [f.get(origen[c]) for c in cs for f in crudos.get(c, [])]
+        despues = [f.get(destino) for f in limpias if f.get("canal") in cs]
+        columnas.append({
+            "columna": destino, "tipo": tipo,
+            "origen_antes": " / ".join(f"{origen[c]} ({c.lower()})" for c in cs),
+            "antes": _estadisticas(antes, tipo) if antes else None,
+            "despues": _estadisticas(despues, tipo) if limpias else None,
+        })
+    return {
+        "origen": "oficial", "canal": canal,
+        "antes": {"etiqueta": f"Crudo ({carpeta}/)",
+                  "filas": sum(len(crudos.get(c, [])) for c in canales)},
+        "despues": {"etiqueta": "transacciones_limpias",
+                    "filas": sum(1 for f in limpias if f.get("canal") in canales)},
+        "columnas": columnas,
+        "nota": None if limpias else "Aun no hay base: ejecuta el pipeline.",
+    }
+
+
 # ======================================================= ejecutar pipeline
 PASOS = [
     ("Fase 0  Contrato de esquema", "fase0_contrato_esquema.py", ["datasets", "datasets_canon"]),
@@ -330,6 +469,7 @@ RUTAS_API = {
     "/api/qa": lambda q: api_qa(),
     "/api/serie": lambda q: api_serie_temporal(),
     "/api/productos": lambda q: api_top_productos(),
+    "/api/comparacion": lambda q: api_comparacion((q.get("canal") or [None])[0]),
 }
 
 

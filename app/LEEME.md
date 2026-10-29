@@ -31,12 +31,13 @@ python app/generar_dashboard_offline.py
 Es la red de seguridad: si el día de la exposición falla Python, el puerto está
 ocupado o la laptop no es la propia, este archivo funciona igual.
 
-## Las ocho vistas
+## Las vistas
 
 | Vista | Qué muestra |
 |---|---|
 | Resumen | KPIs, bifurcación del lote y motivos de cuarentena |
 | Las 7 fases | Embudo de registros a través del pipeline |
+| Antes / después | Cada columna en crudo contra la tabla limpia (nulos, distintos, cuartiles, formatos), por canal o del dataset subido |
 | Datos engañosos | Los 10 errores silenciosos y por qué engañan |
 | Cuarentena | Registros desviados, filtrables por causa |
 | Negocio | Facturación por canal y segmento, serie diaria, top productos |

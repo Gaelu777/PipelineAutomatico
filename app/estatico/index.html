@@ -27,6 +27,7 @@
   <button class="tab tab-destacada" data-vista="universal">Prueba tu dataset</button>
   <button class="tab activa" data-vista="resumen">Resumen</button>
   <button class="tab" data-vista="flujo">Las 7 fases</button>
+  <button class="tab" data-vista="comparacion">Antes / después</button>
   <button class="tab" data-vista="enganosos">Datos engañosos</button>
   <button class="tab" data-vista="cuarentena">Cuarentena</button>
   <button class="tab" data-vista="negocio">Negocio</button>
@@ -96,6 +97,28 @@
       <h2>Detalle por fase</h2>
       <div id="tabla-fases"></div>
     </div>
+  </section>
+
+  <!-- ============================================ ANTES / DESPUÉS -->
+  <section class="vista" id="v-comparacion">
+    <div class="aviso">
+      <strong>Qué le hizo el pipeline a cada columna.</strong>
+      <em>Antes</em> es el dato crudo tal como llegó; <em>después</em> es lo que quedó en la tabla limpia.
+      Cada cambio sale de una regla documentada en <code>REGLAS_DE_NEGOCIO.md</code>, con sus umbrales en
+      <code>config.yaml</code>: recálculo e imputación de nulos, capping por IQR, fechas a ISO, USD a MXN,
+      homologación de categorías y cuarentena de lo que no pasa la validación.
+    </div>
+    <div class="tarjeta">
+      <div class="filtros" id="cmp-origen"></div>
+      <div class="filtros" id="cmp-canal"></div>
+    </div>
+    <div class="kpis" id="cmp-kpis"></div>
+    <div class="tarjeta">
+      <h2>Resumen por columna</h2>
+      <p class="sub">Nulos y valores distintos antes → después, y el cambio más importante.</p>
+      <div id="cmp-resumen"></div>
+    </div>
+    <div id="cmp-detalle"></div>
   </section>
 
   <!-- ============================================ ENGAÑOSOS -->

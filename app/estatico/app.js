@@ -220,7 +220,8 @@ async function vistaNegocio() {
   const s = await api("/api/segmentos");
   if (s && s.cruce.length) {
     const canales = [...new Set(s.cruce.map((x) => x.canal))];
-    const segs = ["BAJO", "MEDIO", "ALTO"];
+    // las etiquetas vienen de config.yaml (segmentacion.etiquetas), en el orden de la Fase 5
+    const segs = s.rangos.length ? s.rangos.map((r) => r.segmento_monto) : ["BAJO", "MEDIO", "ALTO"];
     $("#barras-segmento").innerHTML = barrasAgrupadas(segs, canales.map((c) => ({
       nombre: c, valores: segs.map((g) => {
         const f = s.cruce.find((x) => x.canal === c && x.segmento === g);
@@ -292,6 +293,173 @@ async function vistaQA() {
     .map((r) => ({ etiqueta: `${fmt(r.filas_unificado)} filas`, valor: Number(r.total_s) }))
     .sort((a, b) => a.valor - b.valor);
   $("#grafico-escala").innerHTML = barrasH(vol, { color: PALETA[1], formato: (v) => v.toFixed(1) + " s" });
+}
+
+/* ======================================================== antes / después */
+// Compara cada columna en crudo contra la tabla limpia. Sirve para el pipeline oficial
+// (endpoint /api/comparacion) y para el último dataset subido (lo calcula el motor).
+let cmpCanal = "TODOS", cmpOrigen = "oficial", ultimoReporte = null;
+const num2 = (v) => v === null || v === undefined ? "—"
+  : Number(v).toLocaleString("es-MX", { maximumFractionDigits: 2 });
+const compacto = (v) => {
+  const a = Math.abs(v);
+  const t = a >= 1e6 ? (v / 1e6).toFixed(a >= 1e7 ? 0 : 1) + " M" : a >= 1e3 ? (v / 1e3).toFixed(a >= 1e4 ? 0 : 1) + " k" : num2(v);
+  return t.replace(".0 ", " ");
+};
+
+function cambioClave(c) {
+  const a = c.antes || {}, d = c.despues || {}, p = [];
+  if (a.nulos && a.nulos !== d.nulos) p.push(`nulos ${fmt(a.nulos)} → ${fmt(d.nulos)}`);
+  if (c.tipo === "numerico") {
+    if (a.max !== undefined && d.max !== undefined && a.max !== d.max) p.push(`máx ${num2(a.max)} → ${num2(d.max)}`);
+    if (a.no_positivos) p.push(`${fmt(a.no_positivos)} valores ≤ 0 → ${fmt(d.no_positivos || 0)}`);
+    if (a.no_numericos) p.push(`${fmt(a.no_numericos)} no numéricos → ${fmt(d.no_numericos || 0)}`);
+  } else if (c.tipo === "fecha") {
+    const fa = Object.keys(a.formatos || {}), fd = Object.keys(d.formatos || {});
+    if (fa.join() !== fd.join()) p.push(`${fa.length} formato${fa.length === 1 ? "" : "s"} → ${fd.join(", ") || "—"}`);
+  } else if (c.tipo === "correo" && a.invalidos) {
+    p.push(`${fmt(a.invalidos)} inválidos → ${fmt(d.invalidos || 0)}`);
+  }
+  if (["categorico", "booleano"].includes(c.tipo) && a.distintos !== d.distintos)
+    p.push(`${fmt(a.distintos)} → ${fmt(d.distintos)} valores distintos`);
+  if (c.tipo === "id" && a.distintos !== d.distintos) p.push(`distintos ${fmt(a.distintos)} → ${fmt(d.distintos)}`);
+  return p.length ? p.join(" · ") : "sin cambios";
+}
+
+function cajas(a, d) {
+  // Diagrama de caja antes y después sobre el mismo eje. Si los rangos son muy distintos
+  // (p. ej. un máximo de 2.1 M contra 16 k) se usa escala logarítmica simétrica.
+  if (!a || !d || a.min === undefined || d.min === undefined) return "";
+  const lo = Math.min(a.min, d.min), hi = Math.max(a.max, d.max);
+  const rA = (a.max - a.min) || 1, rD = (d.max - d.min) || 1;
+  const log = rA / rD > 20 || rD / rA > 20;
+  const f = (v) => log ? Math.sign(v) * Math.log10(1 + Math.abs(v)) : v;
+  const L = f(lo), H = f(hi) > L ? f(hi) : L + 1;
+  const ancho = 660, x0 = 78, x1 = ancho - 22;
+  const X = (v) => x0 + ((f(v) - L) / (H - L)) * (x1 - x0);
+  let s = `<svg viewBox="0 0 ${ancho} 150" role="img" aria-label="Distribución antes y después">`;
+  let marcas = [];
+  if (log) {
+    marcas = [0];
+    for (let k = 0; k <= 12; k++) { const v = 10 ** k; if (v <= hi) marcas.push(v); if (-v >= lo) marcas.push(-v); }
+  } else {
+    for (let i = 0; i <= 4; i++) marcas.push(lo + (i / 4) * (hi - lo));
+  }
+  let ultimo = -Infinity;                 // sin etiquetas encimadas: minimo 44 px entre marcas
+  marcas.filter((v) => v >= lo && v <= hi).sort((p, q) => p - q).filter((v) => {
+    if (X(v) - ultimo < 44) return false;
+    ultimo = X(v);
+    return true;
+  }).forEach((v) => {
+    s += `<line class="svg-eje" x1="${X(v)}" x2="${X(v)}" y1="8" y2="118"/>`;
+    s += `<text class="svg-etq" x="${X(v)}" y="134" text-anchor="middle">${esc(compacto(v))}</text>`;
+  });
+  [["Antes", a, PALETA[3], 14], ["Después", d, PALETA[2], 64]].forEach(([etq, e, color, y]) => {
+    const yc = y + 17;
+    s += `<text class="svg-val" x="0" y="${yc + 4}">${etq}</text>`;
+    s += `<line x1="${X(e.min)}" x2="${X(e.max)}" y1="${yc}" y2="${yc}" stroke="${color}" stroke-width="1.6"/>`;
+    [e.min, e.max].forEach((v) => { s += `<line x1="${X(v)}" x2="${X(v)}" y1="${yc - 8}" y2="${yc + 8}" stroke="${color}" stroke-width="1.6"/>`; });
+    if (e.q1 !== undefined) {
+      s += `<rect x="${X(e.q1)}" y="${yc - 12}" width="${Math.max(X(e.q3) - X(e.q1), 2)}" height="24" rx="3" fill="${color}" fill-opacity=".22" stroke="${color}"/>`;
+      s += `<line x1="${X(e.mediana)}" x2="${X(e.mediana)}" y1="${yc - 12}" y2="${yc + 12}" stroke="${color}" stroke-width="2.4"/>`;
+    }
+  });
+  if (log) s += `<text class="svg-etq" x="${x1}" y="148" text-anchor="end">escala logarítmica</text>`;
+  return s + "</svg>";
+}
+
+function listaTop(pares, color) {
+  if (!pares || !pares.length) return vacio("—");
+  const max = Math.max(...pares.map((p) => p[1]), 1);
+  return pares.map(([k, v]) => `<div class="cmp-top"><span class="cmp-top-k" title="${esc(k)}">${esc(k)}</span>
+    <span class="cmp-top-b"><i style="width:${(100 * v / max).toFixed(1)}%;background:${color}"></i></span>
+    <span class="num">${fmt(v)}</span></div>`).join("");
+}
+
+function tablaMetricas(c) {
+  const a = c.antes || {}, d = c.despues || {};
+  const filas = [["Registros", "n", fmt], ["Nulos", "nulos", fmt], ["% nulos", "pct_nulos", (v) => `${v}%`],
+    ["Valores distintos", "distintos", fmt]];
+  if (c.tipo === "numerico") filas.push(["Mínimo", "min", num2], ["Q1", "q1", num2], ["Mediana", "mediana", num2],
+    ["Media", "media", num2], ["Q3", "q3", num2], ["Máximo", "max", num2], ["Desv. estándar", "desv", num2],
+    ["Valores ≤ 0", "no_positivos", fmt], ["No numéricos", "no_numericos", fmt]);
+  if (c.tipo === "correo") filas.push(["Correos inválidos", "invalidos", fmt]);
+  return `<table class="cmp-tabla"><thead><tr><th>Métrica</th><th class="num">Antes</th><th class="num">Después</th></tr></thead>
+    <tbody>${filas.map(([e, k, f]) => {
+      const va = a[k], vd = d[k];
+      const cambio = va !== undefined && vd !== undefined && String(va) !== String(vd);
+      const ver = (v) => v === undefined || v === null ? "—" : f(v);
+      return `<tr${cambio ? ' class="cambio"' : ""}><td>${e}</td><td class="num">${ver(va)}</td><td class="num">${ver(vd)}</td></tr>`;
+    }).join("")}</tbody></table>`;
+}
+
+function detalleColumna(c) {
+  const a = c.antes || {}, d = c.despues || {};
+  let vis = "";
+  if (c.tipo === "numerico") vis = cajas(c.antes, c.despues);
+  else if (c.tipo === "fecha") vis = `<div class="rejilla-2"><div><h3 class="sub">Formatos antes</h3>${listaTop(Object.entries(a.formatos || {}), PALETA[3])}</div>
+    <div><h3 class="sub">Formatos después</h3>${listaTop(Object.entries(d.formatos || {}), PALETA[2])}</div></div>`;
+  else if (a.top || d.top) vis = `<div class="rejilla-2"><div><h3 class="sub">Valores más frecuentes antes</h3>${listaTop(a.top, PALETA[3])}</div>
+    <div><h3 class="sub">Valores más frecuentes después</h3>${listaTop(d.top, PALETA[2])}</div></div>`;
+  return `<details class="cmp-col" id="cmp-${esc(c.columna)}">
+    <summary><strong class="mono">${esc(c.columna)}</strong> <span class="pil neutro">${esc(c.tipo)}</span>
+      <span class="tenue">${esc(cambioClave(c))}</span></summary>
+    <p class="sub">Antes: <span class="mono">${esc(c.origen_antes || c.columna)}</span></p>
+    <div class="cmp-cuerpo"><div>${tablaMetricas(c)}</div><div>${vis || vacio("Sin gráfica para este tipo de columna")}</div></div>
+  </details>`;
+}
+
+function datosComparacion() {
+  if (cmpOrigen === "oficial") return api(`/api/comparacion${cmpCanal !== "TODOS" ? "?canal=" + cmpCanal : ""}`);
+  const nombre = cmpOrigen.slice(5), f = ultimoReporte && ultimoReporte.fuentes[nombre];
+  if (!f || !f.comparacion) return Promise.resolve(null);
+  return Promise.resolve({
+    origen: "universal", columnas: f.comparacion.columnas, nota: f.comparacion.muestra,
+    antes: { etiqueta: "Crudo (tras normalizar la estructura)", filas: (f.estructura || {}).filas_crudas },
+    despues: { etiqueta: `${nombre}_limpias`, filas: (f.fase6 || {}).validas },
+  });
+}
+
+async function vistaComparacion() {
+  const fuentes = ultimoReporte ? Object.entries(ultimoReporte.fuentes).filter(([, f]) => f.comparacion).map(([k]) => k) : [];
+  if (cmpOrigen !== "oficial" && !fuentes.includes(cmpOrigen.slice(5))) cmpOrigen = "oficial";
+  $("#cmp-origen").innerHTML = `<span class="tenue">Origen:</span>
+    <button class="chip ${cmpOrigen === "oficial" ? "activo" : ""}" data-o="oficial">Pipeline oficial (Grupo 1)</button>` +
+    fuentes.map((k) => `<button class="chip ${cmpOrigen === "univ:" + k ? "activo" : ""}" data-o="univ:${esc(k)}">Dataset subido · ${esc(k)}</button>`).join("");
+  $("#cmp-origen").querySelectorAll(".chip").forEach((b) => b.onclick = () => { cmpOrigen = b.dataset.o; vistaComparacion(); });
+  $("#cmp-canal").innerHTML = cmpOrigen !== "oficial" ? "" : `<span class="tenue">Canal:</span>` +
+    [["TODOS", "Todos"], ["FISICA", "Tienda física"], ["ONLINE", "Online"]].map(([v, e]) =>
+      `<button class="chip ${cmpCanal === v ? "activo" : ""}" data-c="${v}">${e}</button>`).join("");
+  $("#cmp-canal").querySelectorAll(".chip").forEach((b) => b.onclick = () => { cmpCanal = b.dataset.c; vistaComparacion(); });
+
+  const d = await datosComparacion();
+  if (!d || !d.columnas || !d.columnas.length) {
+    $("#cmp-kpis").innerHTML = "";
+    $("#cmp-resumen").innerHTML = vacio(d && d.nota ? d.nota : "Sin datos para comparar. Ejecuta el pipeline o procesa un dataset.");
+    $("#cmp-detalle").innerHTML = "";
+    return;
+  }
+  const cols = d.columnas.filter((c) => c.antes);
+  const nulA = cols.reduce((s, c) => s + ((c.antes || {}).nulos || 0), 0);
+  const nulD = cols.reduce((s, c) => s + ((c.despues || {}).nulos || 0), 0);
+  const conCambio = cols.filter((c) => cambioClave(c) !== "sin cambios").length;
+  $("#cmp-kpis").innerHTML = [
+    ["Filas", `${fmt(d.antes.filas)} → ${fmt(d.despues.filas)}`, `${esc(d.antes.etiqueta)} → ${esc(d.despues.etiqueta)}`, ""],
+    ["Columnas comparadas", fmt(cols.length), `${conCambio} con cambios`, ""],
+    ["Nulos en total", `${fmt(nulA)} → ${fmt(nulD)}`, "recalculados, imputados o en cuarentena", nulD === 0 ? "ok" : ""],
+  ].map(([e, v, p, c]) => `<div class="kpi ${c}"><div class="etq">${e}</div><div class="val">${v}</div><div class="pie">${p}</div></div>`).join("");
+  $("#cmp-resumen").innerHTML = `${d.nota ? `<p class="sub">${esc(d.nota)}</p>` : ""}<div class="tabla-scroll"><table>
+    <thead><tr><th>Columna</th><th>Tipo</th><th class="num">Nulos</th><th class="num">Distintos</th><th>Qué cambió</th></tr></thead>
+    <tbody>${cols.map((c) => `<tr class="fila-click" data-col="${esc(c.columna)}"><td class="mono"><strong>${esc(c.columna)}</strong></td>
+      <td>${esc(c.tipo)}</td><td class="num">${fmt(c.antes.nulos)} → ${fmt((c.despues || {}).nulos)}</td>
+      <td class="num">${fmt(c.antes.distintos)} → ${fmt((c.despues || {}).distintos)}</td>
+      <td>${esc(cambioClave(c))}</td></tr>`).join("")}</tbody></table></div>
+    <p class="tenue">Clic en una fila para ver el detalle de la columna.</p>`;
+  $("#cmp-detalle").innerHTML = cols.map(detalleColumna).join("");
+  $("#cmp-resumen").querySelectorAll(".fila-click").forEach((tr) => tr.onclick = () => {
+    const det = document.getElementById("cmp-" + tr.dataset.col);
+    if (det) { det.open = true; det.scrollIntoView({ behavior: "smooth", block: "start" }); }
+  });
 }
 
 /* =============================================================== ejecutar */
@@ -393,6 +561,8 @@ function tabla(filas, cols, titulos) {
 function pintarReporte(r) {
   if (!r) { $("#resultado-u").innerHTML = vacio("Sin reporte."); return; }
   if (!r.ok) { $("#resultado-u").innerHTML = `<div class="aviso"><strong>El motor se detuvo sin corromper nada.</strong> ${esc(r.error || "")}</div>`; return; }
+  ultimoReporte = r;
+  cargadas.delete("comparacion");           // la pestaña Antes / después se recalcula
   const t = r.totales;
   let h = `<div class="kpis">
     <div class="kpi"><div class="etq">Registros</div><div class="val">${fmt(t.entrada)}</div><div class="pie">${Object.keys(r.fuentes).length} fuente(s) · ${r.segundos}s</div></div>
@@ -401,12 +571,17 @@ function pintarReporte(r) {
     <div class="kpi"><div class="etq">Rollback</div><div class="val">${r.bd && r.bd._rollback_verificado ? "OK" : "—"}</div><div class="pie">verificado en SQLite</div></div></div>`;
   h += `<div class="tarjeta descargas"><h2>Descargas</h2>${(r.archivos || []).map((f) =>
     `<a href="/api/universal/descargar?id=${corrida}&f=${encodeURIComponent(f)}">${esc(f)}</a>`).join("")}</div>`;
+  const comparables = Object.entries(r.fuentes).filter(([, f]) => f.comparacion);
+  if (comparables.length) h += `<div class="barra-acciones" style="margin:0 0 14px">
+    <button class="btn-principal" id="btn-ver-cmp">Ver antes / después por columna</button>
+    <span class="tenue">Qué le hizo el pipeline a cada columna de tu archivo.</span></div>`;
   if (r.relaciones && r.relaciones.length) h += `<div class="tarjeta"><h2>Relaciones detectadas (catálogo maestro)</h2>
     ${tabla(r.relaciones, ["hija", "columna", "maestro", "llave", "huerfanos"], ["Tabla", "Columna", "Catálogo", "Llave", "Huérfanos"])}</div>`;
   for (const [nombre, f] of Object.entries(r.fuentes)) {
     if (f.vacio) { h += `<div class="tarjeta"><h2>${esc(nombre)}</h2>${vacio("Sin filas útiles.")}</div>`; continue; }
     const f6 = f.fase6 || {}, f34 = f.fase34 || {}, f5 = f.fase5 || {};
-    h += `<div class="tarjeta"><div class="fuente-cab"><h2>${esc(nombre)}</h2>
+    const blq = f.modo === "bloques" && f.bloques ? `<span class="pil neutro" title="Archivo procesado en ${f.bloques.pasadas} pasadas con memoria acotada">por bloques · ${fmt(f.bloques.bloques)} bloques de ${fmt(f.bloques.filas_por_bloque)} filas · ${num2(f.bloques.mb)} MB${f.bloques.cuantiles_exactos ? "" : " · cuantiles por muestra"}</span>` : "";
+    h += `<div class="tarjeta"><div class="fuente-cab"><h2>${esc(nombre)} ${blq}</h2>
       <span class="tenue">${fmt(f6.validas)} válidos · ${fmt(f6.cuarentena)} cuarentena · completitud ${f.perfil.completitud_pct}%</span></div>
       <h3 class="sub">Fase 1 · Perfil y tipos inferidos</h3>
       ${tabla(f.perfil.columnas, ["columna", "tipo", "nulos", "pct_nulos", "unicos", "ejemplo"], ["Columna", "Tipo", "Nulos", "% nulos", "Únicos", "Ejemplo"])}
@@ -425,11 +600,13 @@ function pintarReporte(r) {
     </div>`;
   }
   $("#resultado-u").innerHTML = h;
+  const btn = $("#btn-ver-cmp");
+  if (btn) btn.onclick = () => { cmpOrigen = "univ:" + comparables[0][0]; cargadas.delete("comparacion"); ir("comparacion"); };
 }
 
 /* ============================================================ navegación */
 const VISTAS = {
-  resumen: vistaResumen, flujo: vistaFlujo, enganosos: vistaEnganosos,
+  resumen: vistaResumen, flujo: vistaFlujo, comparacion: vistaComparacion, enganosos: vistaEnganosos,
   cuarentena: vistaCuarentena, negocio: vistaNegocio, estres: vistaEstres,
   qa: vistaQA, ejecutar: sondear, universal: () => {},
 };
@@ -451,3 +628,11 @@ document.querySelectorAll(".tab").forEach((t) => t.onclick = () => ir(t.dataset.
 // Permite enlaces directos y el botón Atrás del navegador.
 window.addEventListener("hashchange", () => ir(nombreValido()));
 ir(nombreValido());
+// El sello de la cabecera lo pinta la vista Resumen; si el panel abre en otra pestaña
+// (p. ej. "Prueba tu dataset"), se consulta aparte para que no se quede en "cargando…".
+if (nombreValido() !== "resumen") api("/api/resumen").then((r) => {
+  if (!r) return;
+  $("#sello-bd").textContent = r.bd_existe ? `base cargada · ${fmt(r.bd_kb)} KB` : "base no generada";
+  $("#sello-bd").className = "sello" + (r.bd_existe ? "" : " malo");
+  $("#actualizado").textContent = r.bd_existe ? `Actualizado ${r.actualizado}` : "";
+});
