@@ -77,8 +77,14 @@ def casos(grande: bool):
                                                   "1789105020,12\n31/02/2026,13\nayer,14\n").encode()}
     yield "texto_gigante_en_celda", {"p.csv": ("a,b\n" + "x" * 2_000_000 + ",1\nq,2\n").encode()}
     pq = io.BytesIO()
-    d.to_parquet(pq)
-    yield "parquet", {"q.parquet": pq.getvalue()}
+    try:
+        d.to_parquet(pq)
+    except ImportError:
+        # pyarrow es opcional (requirements.txt). Sin el no se puede ni FABRICAR el archivo de
+        # prueba; antes esto tumbaba la suite completa. Ahora el caso se omite y se reporta.
+        yield "parquet", None
+    else:
+        yield "parquet", {"q.parquet": pq.getvalue()}
     z = io.BytesIO()
     with zipfile.ZipFile(z, "w") as f:
         f.writestr("dentro/ventas.csv", d.to_csv(index=False))
@@ -102,6 +108,12 @@ def main():
     shutil.rmtree(TMP, ignore_errors=True)
     filas = []
     for nombre, archivos in casos(grande):
+        if archivos is None:
+            filas.append({"caso": nombre, "crash": False, "ok": None, "entrada": 0, "limpias": 0,
+                          "cuarentena": 0, "seg": 0.0,
+                          "nota": "omitido: falta pyarrow (pip install -r requirements.txt)"})
+            print(f"  {nombre:<38} {'omitido':<20} falta pyarrow para fabricar el archivo de prueba")
+            continue
         d = TMP / nombre
         (d / "in").mkdir(parents=True)
         for f, data in archivos.items():
@@ -127,7 +139,9 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     res.to_csv(out / "tortura_universal.csv", index=False, encoding="utf-8-sig")
     crashes = int(res.crash.sum())
-    print(f"\n  {len(res)} casos, {crashes} excepciones no controladas")
+    omitidos = int(res.nota.astype(str).str.startswith("omitido").sum())
+    print(f"\n  {len(res)} casos, {crashes} excepciones no controladas"
+          + (f" ({omitidos} omitido por falta de una dependencia opcional)" if omitidos else ""))
     shutil.rmtree(TMP, ignore_errors=True)
     sys.exit(1 if crashes else 0)
 

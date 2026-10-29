@@ -18,7 +18,8 @@ Prof. Armando Román Gallardo Heredia · Exposición: 29 de octubre de 2026, 14:
 | Pruebas de estrés del esquema Pydantic | 25 casos, **0 excepciones no controladas** |
 | Suite de QA con verdad conocida | 9 escenarios, **200 verificaciones, 0 fallos** |
 | Pruebas de tortura del motor universal | 21 archivos raros o rotos, **0 excepciones no controladas** |
-| Volumen máximo probado | **1,000,000 de filas en 40 s** |
+| Volumen máximo probado | **1,000,000 de filas en 40 s** (en memoria) · archivos de **más de 5 GB por bloques** |
+| Suite de extensiones | `config.yaml`, bloques = memoria byte a byte, panel en vivo: **59 verificaciones, 0 fallos** |
 
 Causas de la cuarentena: 57 llaves huérfanas · 37 correos con sintaxis inválida ·
 25 totales que no cuadran · 11 correos con `@@` o `..` · 8 bots (total inflado ×80) ·
@@ -138,7 +139,14 @@ El panel **no usa ninguna librería externa**: servidor con la librería estánd
 
 ### 5.2 Pestañas
 
-**Prueba tu dataset** (subida de archivos) · Resumen · Las 7 fases · Datos engañosos · Cuarentena (filtrable) · Negocio · Pruebas de estrés · QA a escala · Ejecutar pipeline.
+**Prueba tu dataset** (subida de archivos) · Resumen · Las 7 fases · **Antes / después** · Datos engañosos · Cuarentena (filtrable) · Negocio · Pruebas de estrés · QA a escala · Ejecutar pipeline.
+
+**Antes / después** (nueva): columna por columna, el dato crudo contra `transacciones_limpias`.
+Qué mostrar: `monto_mxn` (máximo 2,109,055 → 16,510.02 por el capping; 11 valores ≤ 0 → 0;
+el diagrama de caja en escala logarítmica), `fecha` (5 formatos → solo AAAA-MM-DD) y `correo`
+(28 inválidos y 20 vacíos → 0: son los 48 correos de la cuarentena). Tiene filtro por canal.
+Después de subir un dataset, el botón «Ver antes / después por columna» hace lo mismo con el archivo
+del profesor.
 
 ### 5.3 Qué decirle al profesor para la demostración
 
@@ -181,6 +189,7 @@ Prueba hecha con los tres archivos oficiales **sin decirle nada al motor sobre s
 | QA con verdad conocida (`qa/suite_qa.py`) | 9 escenarios: normal, 3× sucio, limpio, columnas extra, columnas faltantes, esquema en inglés, esquema ERP, 25 k y 100 k | **200 verificaciones, 0 fallos** |
 | Tortura del motor (`qa/tortura_universal.py`) | 21 archivos: Excel multihoja, CP-1252 con `;`, TSV con `$`, JSON anidado, JSON Lines, Parquet, ZIP, binario, vacío, JSON roto, celdas de 2 MB, infinitos, 1 M de filas | **0 excepciones no controladas** |
 | Rollback | Insertar una fila que viola `CHECK` | Tabla intacta |
+| Extensiones (`qa/suite_extensiones.py`) | `config.yaml` (lectura, errores de dedo, cambio de umbral de punta a punta), modo por bloques comparado byte a byte contra el modo en memoria, falla a media carga sin salidas parciales y panel en vivo | **59 verificaciones, 0 fallos** |
 
 Los **10 invariantes** de integridad que se comprueban en cada escenario: ninguna fila se pierde · cero huérfanos en limpias · cero correos inválidos · aritmética coherente · fechas ISO · cero USD sin convertir · normalizado en [0, 1] · llave única · toda cuarentena con motivo · cero montos no positivos. Más idempotencia y recarga a BD sin duplicar.
 
@@ -263,11 +272,15 @@ Para la demo, si el profesor no trae archivo, usar `demo/profe_sucio.xlsx` (5,00
 
 **¿Y si subo algo que no es una tabla?** Se detiene de forma controlada, lo dice y no escribe nada.
 
-**¿Cuánto aguanta?** Un millón de filas en 40 s con escalamiento lineal. El límite es la memoria RAM; el siguiente paso sería procesar por bloques con `chunksize`.
+**¿Cuánto aguanta?** En memoria, un millón de filas en 40 s. Los archivos de más de 256 MB se procesan **por bloques** (`chunksize`) en tres pasadas: estructura, estadísticas globales y transformación. La memoria queda acotada aunque el archivo pese 5 GB o más, y el resultado es idéntico al del modo en memoria, verificado byte a byte.
+
+**¿Por bloques no cambia el IQR o los terciles?** No. Los cuartiles, la mediana, el mínimo, el máximo y los cortes se calculan una vez con **todo** el archivo (pasada 2) y se aplican igual a cada bloque. Si cada bloque calculara sus propios cuartiles, el mismo monto se recortaría distinto según el bloque donde cayera.
 
 **¿Cómo saben que no corrompen datos?** Generador con verdad conocida + 10 invariantes en cada escenario.
 
-**¿Qué harían distinto?** Empezar por el contrato de esquema y por las pruebas; sacar los umbrales a un archivo de configuración versionado.
+**¿Qué harían distinto?** Empezar por el contrato de esquema y por las pruebas.
+
+**¿Dónde están los umbrales?** En `config.yaml`, versionado en git: tipo de cambio 19.50, IQR 1.5, terciles, alfa 0.05 y las reglas de la Fase 6. Cambiar un umbral es un commit con autor y motivo. El cargador rechaza errores de dedo (por ejemplo `factor_iqrr`) y valores absurdos (un factor IQR negativo); una fase con configuración inválida se detiene sin escribir nada.
 
 **¿Lo más difícil?** Descubrir que nosotros mismos rompíamos datos: el capping dejó 40 filas incoherentes y dejaba pasar 8 bots. Un pipeline debe auditarse a sí mismo.
 
@@ -305,4 +318,6 @@ python app/servidor.py                                   # panel
 python motor/pipeline_universal.py <archivo_o_carpeta>   # motor por consola
 python qa/suite_qa.py --completo                         # 200 verificaciones
 python qa/tortura_universal.py --grande                  # 21 torturas + 1 M de filas
+python qa/suite_extensiones.py                           # config.yaml, bloques y panel
+python configuracion.py                                  # umbrales vigentes
 ```

@@ -1,0 +1,62 @@
+﻿seccion,verificacion,ok,detalle
+CONFIG,config.yaml es valido,True,
+CONFIG,version declarada >= 1,True,1
+CONFIG,lector interno == PyYAML,True,
+CONFIG,config.yaml == valores documentados (README / REGLAS),True,
+CONFIG,"umbrales de la defensa: TC 19.50, IQR 1.5, terciles BAJO/MEDIO/ALTO",True,
+CONFIG,rechaza: clave mal escrita,True,"[True, True]"
+CONFIG,rechaza: texto en un numero,True,"[True, True]"
+CONFIG,rechaza: factor IQR negativo,True,"[True, True]"
+CONFIG,rechaza: tipo de cambio en cero,True,"[True, True]"
+CONFIG,rechaza: etiquetas que no cuadran con cuantiles,True,"[True, True]"
+CONFIG,rechaza: etiqueta con caracteres SQL,True,"[True, True]"
+CONFIG,rechaza: periodo invertido,True,"[True, True]"
+CONFIG,rechaza: booleano en lugar de entero,True,"[True, True]"
+CONFIG,rechaza: tabulador en la sangria,True,"[True, True]"
+CONFIG,rechaza: clave faltante,True,"[True, True]"
+CONFIG,sin config.yaml usa los valores documentados,True,
+CONFIG,"fase con config invalida: codigo 2, mensaje claro, sin salidas",True,"rc=2  0)
+[config] el pipeline no corre con umbrales dudosos: corrige el archivo (o restauralo con: git checkout config.yaml)
+"
+CONFIG,motor con config invalida: se detiene controlado,True,ErrorConfiguracion: 'outliers.factor_iqr' = -1 fuera de rango (debe ser > 0)
+CONFIG,tipo de cambio 20.00 en config.yaml -> el motor convierte x 20,True,precio=220.0
+CONFIG,pipeline oficial completo (defensa),True,"[0, 0, 0, 0, 0]"
+CONFIG,"config versionada reproduce 1,049 / 140 / $4,074,888.52",True,"(1049, 140, 4074888.52)"
+CONFIG,pipeline oficial completo (cuartiles),True,"[0, 0, 0, 0, 0]"
+CONFIG,4 cuantiles en config.yaml: 4 segmentos y CHECK de la base acorde,True,"(['Q1', 'Q2', 'Q3', 'Q4'], 1049, 140)"
+BLOQUES,datasets_oficiales: memoria == bloques byte a byte (3 bloques),True,"modos=['bloques', 'memoria'] csv_iguales=True {'entrada': 1270, 'limpias': 1145, 'cuarentena': 125, 'tasa_aceptacion': 90.16} vs {'entrada': 1270, 'limpias': 1145, 'cuarentena': 125, 'tasa_aceptacion': 90.16}"
+BLOQUES,datasets_oficiales: limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 1270, 'limpias': 1145, 'cuarentena': 125, 'tasa_aceptacion': 90.16}"
+BLOQUES,generador_sucio_x2 (CSV + JSONL): memoria == bloques byte a byte (30 bloques),True,"modos=['bloques', 'memoria'] csv_iguales=True {'entrada': 7314, 'limpias': 5951, 'cuarentena': 1363, 'tasa_aceptacion': 81.36} vs {'entrada': 7314, 'limpias': 5951, 'cuarentena': 1363, 'tasa_aceptacion': 81.36}"
+BLOQUES,generador_sucio_x2 (CSV + JSONL): limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 7314, 'limpias': 5951, 'cuarentena': 1363, 'tasa_aceptacion': 81.36}"
+BLOQUES,tortura/csv_normal: memoria == bloques byte a byte (8 bloques),True,"modos=['bloques'] csv_iguales=True {'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35} vs {'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35}"
+BLOQUES,tortura/csv_normal: limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35}"
+BLOQUES,tortura/csv_cp1252_puntoycoma_coma_decimal: memoria == bloques byte a byte (8 bloques),True,"modos=['bloques'] csv_iguales=True {'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35} vs {'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35}"
+BLOQUES,tortura/csv_cp1252_puntoycoma_coma_decimal: limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35}"
+BLOQUES,tortura/tsv_con_signos_de_pesos: memoria == bloques byte a byte (8 bloques),True,"modos=['bloques'] csv_iguales=True {'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35} vs {'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35}"
+BLOQUES,tortura/tsv_con_signos_de_pesos: limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 2000, 'limpias': 1967, 'cuarentena': 33, 'tasa_aceptacion': 98.35}"
+BLOQUES,tortura/json_lines: memoria == bloques byte a byte (2 bloques),True,"modos=['bloques'] csv_iguales=True {'entrada': 300, 'limpias': 295, 'cuarentena': 5, 'tasa_aceptacion': 98.33} vs {'entrada': 300, 'limpias': 295, 'cuarentena': 5, 'tasa_aceptacion': 98.33}"
+BLOQUES,tortura/json_lines: limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 300, 'limpias': 295, 'cuarentena': 5, 'tasa_aceptacion': 98.33}"
+BLOQUES,tortura/texto_gigante_en_celda: memoria == bloques byte a byte (1 bloques),True,"modos=['bloques'] csv_iguales=True {'entrada': 2, 'limpias': 2, 'cuarentena': 0, 'tasa_aceptacion': 100.0} vs {'entrada': 2, 'limpias': 2, 'cuarentena': 0, 'tasa_aceptacion': 100.0}"
+BLOQUES,tortura/texto_gigante_en_celda: limpias + cuarentena = entrada y base cuadra,True,"{'entrada': 2, 'limpias': 2, 'cuarentena': 0, 'tasa_aceptacion': 100.0}"
+BLOQUES,archivo grande raro 'binario': controlado,True,ValueError: ningun archivo pudo leerse como tabla de datos
+BLOQUES,archivo grande raro 'json_un_documento': controlado,True,"{'entrada': 3000, 'limpias': 3000, 'cuarentena': 0, 'tasa_aceptacion': 100.0}"
+BLOQUES,archivo grande raro 'comilla_sin_cerrar': controlado,True,"{'entrada': 3000, 'limpias': 3000, 'cuarentena': 0, 'tasa_aceptacion': 100.0}"
+BLOQUES,archivo grande raro 'columnas_de_mas': controlado,True,"{'entrada': 3001, 'limpias': 3001, 'cuarentena': 0, 'tasa_aceptacion': 100.0}"
+BLOQUES,ZIP grande: extraccion por streaming y CSV por bloques,True,None
+BLOQUES,"falla a media carga: rollback, sin CSV ni tablas parciales",True,['_prueba_rollback']
+PANEL,app/servidor.py: solo libreria estandar,True,set()
+PANEL,configuracion.py: solo libreria estandar,True,set()
+PANEL,app/generar_dashboard_offline.py: solo libreria estandar,True,set()
+PANEL,comparacion TODOS: invariantes de la tabla limpia,True,"{""monto_mxn"": [{""n"": 1220, ""nulos"": 32, ""pct_nulos"": 2.62, ""distintos"": 364, ""no_numericos"": 0, ""no_positivos"": 11, ""min"": -3632.45, ""q1"": 905.68, ""mediana"": 2367.865, ""media"": 10723.8888, ""q3"": 4796.3, ""max"": 2109055.0, ""desv"": 85827.2229}, {""n"": 10"
+PANEL,comparacion FISICA: invariantes de la tabla limpia,True,"{""monto_mxn"": [{""n"": 620, ""nulos"": 32, ""pct_nulos"": 5.16, ""distintos"": 240, ""no_numericos"": 0, ""no_positivos"": 11, ""min"": -3632.45, ""q1"": 1869.66, ""mediana"": 3506.37, ""media"": 16586.7391, ""q3"": 7811.7, ""max"": 2109055.0, ""desv"": 115975.7152}, {""n"": 56"
+PANEL,comparacion ONLINE: invariantes de la tabla limpia,True,"{""monto_mxn"": [{""n"": 600, ""nulos"": 0, ""pct_nulos"": 0.0, ""distintos"": 237, ""no_numericos"": 0, ""no_positivos"": 0, ""min"": 17.06, ""q1"": 214.55, ""mediana"": 1228.72, ""media"": 4978.2955, ""q3"": 3192.45, ""max"": 826360.8, ""desv"": 36737.3245}, {""n"": 489, ""nulos"
+PANEL,servidor --sin-navegador levanta,True,
+PANEL,GET / -> 200,True,200
+PANEL,GET /app.js -> 200,True,200
+PANEL,GET /estilos.css -> 200,True,200
+PANEL,GET /api/resumen -> 200,True,200
+PANEL,GET /api/comparacion -> 200,True,200
+PANEL,GET /api/comparacion?canal=FISICA -> 200,True,200
+PANEL,GET /api/comparacion?canal=ONLINE -> 200,True,200
+PANEL,la pestana 'Antes / despues' existe en el panel,True,
+PANEL,subida desde el panel: procesa y trae la comparacion por columna,True,"{'ok': True, 'totales': {'entrada': 300, 'limpias': 291, 'cuarentena': 9, 'tasa_aceptacion': 97.0}}"

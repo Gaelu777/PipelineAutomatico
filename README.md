@@ -6,7 +6,7 @@ Proyecto integrador ETL de Ingeniería de Datos (ATD-2602, TecNM Colima). Pipeli
 ## Requisitos
 
 ```
-pip install pandas numpy scipy pydantic
+pip install -r requirements.txt
 ```
 
 `pydantic` se usa en la Fase 6 (validación). `pymupdf` solo hace falta si se quieren
@@ -82,6 +82,55 @@ python qa/tortura_universal.py --grande
 
 21 archivos raros o rotos (Excel multihoja, CP-1252 con `;`, JSON anidado, binario, vacío,
 celdas de 2 MB, infinitos…) y un millón de filas en 40 s: 0 excepciones no controladas.
+
+**Archivos enormes (más de 5 GB).** Los CSV, TSV, TXT y JSON Lines que superan
+`motor.bloques.umbral_mb` (256 MB) se procesan **por bloques** (`chunksize`) en tres pasadas y
+con memoria acotada:
+
+1. Estructura: nulos, duplicados (un hash de 64 bits por fila) y una muestra aleatoria para inferir tipos.
+2. Distribuciones: medianas, cuartiles, mínimos, máximos y tablas chi² **globales**.
+3. Transformación: se aplican las fases 2 a 7 bloque por bloque **con los parámetros globales**,
+   y CSV y SQLite se escriben de forma incremental en una sola transacción.
+
+El modo por bloques produce las mismas salidas, byte a byte, que el modo en memoria; lo verifica
+`qa/suite_extensiones.py`. Si algo falla a media carga se hace rollback y no quedan archivos parciales.
+Limitación conocida: si una línea con columnas de más cae justo en la primera fila de un bloque, el
+lector C de pandas la conserva recortada a las columnas del encabezado en vez de omitirla (no se pierde).
+
+```
+python motor/pipeline_universal.py <archivo> <salida> --umbral-mb 0.5   # forzar bloques
+python qa/suite_extensiones.py --gigante 5.2                            # prueba con 5.2 GB
+```
+
+## Umbrales: `config.yaml`
+
+Tipo de cambio (19.50), factor IQR (1.5), cuantiles de segmentación (terciles BAJO/MEDIO/ALTO),
+alfa de MCAR/MAR, reglas de la Fase 6 y parámetros del motor viven en `config.yaml`, versionado
+en git. Todas las fases y el motor lo leen con `configuracion.py`, un cargador con validación
+estricta: rechaza claves desconocidas o faltantes, tipos incorrectos y valores fuera de rango.
+Con la configuración versionada el resultado es idéntico al de siempre.
+
+```
+python configuracion.py      # muestra y valida la configuración efectiva
+```
+
+Las salidas guardan la huella de la configuración usada (`version` y `sha256`) en
+`parametros_escalamiento.json`, `resumen_fase3_fase4.json` y el `reporte.json` del motor.
+
+## Panel: pestaña «Antes / después»
+
+Compara columna por columna el dato crudo contra `transacciones_limpias`: nulos, valores
+distintos, mínimo, cuartiles, máximo, formatos de fecha y correos inválidos, con un diagrama de
+caja antes y después. Se puede filtrar por canal (tienda física u online) y también funciona
+con el último dataset subido en «Prueba tu dataset».
+
+## Pruebas
+
+```
+python qa/suite_qa.py --completo     # 200 verificaciones con verdad conocida
+python qa/tortura_universal.py       # 21 archivos raros o rotos
+python qa/suite_extensiones.py       # config.yaml, bloques == memoria y panel en vivo
+```
 
 Las carpetas `salidas_fase*` no se versionan: se regeneran con los comandos de arriba.
 Las fuentes que no existan en `datasets/` se omiten.

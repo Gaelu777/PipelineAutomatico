@@ -5,6 +5,29 @@ Proyecto integrador ETL, Ingeniería de Datos (ATD-2602), TecNM Campus Colima.
 Cada integrante documenta aquí las decisiones de su fase: qué se decidió, por qué y el efecto antes/después.
 Cifras del Grupo 1 (tienda física y online).
 
+## Configuración versionada (`config.yaml`)
+
+Todos los umbrales de este documento se leen de `config.yaml`, que está en git. Cambiar un umbral
+es un commit con autor, fecha y motivo, no una edición escondida en el código.
+
+| Parámetro | Valor | Fase |
+|---|---|---|
+| `moneda.tipo_cambio_usd_mxn` | 19.50 | F4 (se aplica antes del IQR) |
+| `outliers.factor_iqr` | 1.5 | F3 |
+| `outliers.min_datos_por_grupo` | 8 | F3 |
+| `segmentacion.cuantiles` / `etiquetas` | 3 / BAJO, MEDIO, ALTO | F5 (y el CHECK de F7) |
+| `faltantes.alfa` | 0.05 | F2 (MCAR / MAR) |
+| `validacion.tolerancia_pesos` | 0.01 | F6 R3b |
+| `validacion.precio_relleno` | 500.00 | F6 R2 |
+| `validacion.factor_bot` | 80 | F6 R3a |
+| `validacion.inicio_operacion` / `fin_operacion` | 2026-01-01 / 2026-12-31 | F6 |
+| `contrato.umbral_difuso` | 0.70 | F0 |
+
+El cargador (`configuracion.py`) rechaza claves desconocidas o faltantes, tipos incorrectos y
+valores fuera de rango. Ante una configuración inválida las fases se detienen con código 2 sin
+escribir nada. Si el archivo no existe se usan exactamente estos valores. Con la configuración
+versionada, las cifras de este documento no cambian: lo verifica `qa/suite_extensiones.py`.
+
 ## Fases 3 y 4: Outliers, integración y huérfanos
 
 Script: `fase3_fase4_pipeline.py`. Orden por fuente: conversión USD a MXN, homologación de mayúsculas,
@@ -246,6 +269,17 @@ Monto facturable total: $4,074,888.52 MXN sobre 1,049 ventas válidas.
 
 Lectura: la tienda física concentra el 77.7% del importe facturado con menos pedidos, y su segmento ALTO solo
 (265 pedidos) vale más que todo el canal online junto. El online vende volumen en el segmento BAJO.
+
+### Motor universal: archivos enormes por bloques
+Un CSV, TSV o JSON Lines mayor a `motor.bloques.umbral_mb` no se carga completo: se procesa en tres
+pasadas por bloques. Las decisiones que dependen de todo el archivo (mediana para imputar, cuartiles
+del IQR, mínimo y máximo de Min-Max, cortes de terciles, duplicados, coma decimal, epoch) se
+calculan **una vez con el archivo completo** y se aplican igual a todos los bloques. Por eso el
+resultado es idéntico al del modo en memoria. Diferencia documentada: en el modo por bloques el
+duplicado exacto se compara sobre el texto normalizado de la Fase 0.
+
+Corrección hecha al revisar el motor: el lector de CSV de Python descartaba **en silencio** una fila
+con una celda de más de 128 KB. Ahora se conserva, de acuerdo con la regla de no perder filas.
 
 ### Verificación de las fases 5 a 7
 - Valores de `monto_mxn_norm` fuera de [0, 1]: 0.
