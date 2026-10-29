@@ -26,10 +26,17 @@ from pathlib import Path
 
 import pandas as pd
 
+from configuracion import cargar_o_salir
+
+CFG = cargar_o_salir()
+# Las etiquetas de segmento salen de config.yaml para que el CHECK coincida con la Fase 5.
+SEGMENTOS_SQL = ",".join(f"'{e}'" for e in CFG.etiquetas)   # 'BAJO','MEDIO','ALTO'
+ORDEN_SEGMENTOS_SQL = " ".join(f"WHEN '{e}' THEN {i}" for i, e in enumerate(CFG.etiquetas, 1))
+
 ENTRADA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("salidas_fase6")
 BD = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("pipeline.db")
 
-DDL_LIMPIAS = """
+DDL_LIMPIAS = f"""
 CREATE TABLE IF NOT EXISTS transacciones_limpias (
     id_registro           TEXT    PRIMARY KEY,
     canal                 TEXT    NOT NULL CHECK (canal IN ('FISICA','ONLINE')),
@@ -44,7 +51,7 @@ CREATE TABLE IF NOT EXISTS transacciones_limpias (
     monto_mxn             REAL    NOT NULL CHECK (monto_mxn > 0),
     monto_facturable_mxn  REAL    NOT NULL CHECK (monto_facturable_mxn >= 0),
     monto_mxn_norm        REAL    NOT NULL CHECK (monto_mxn_norm BETWEEN 0 AND 1),
-    segmento_monto        TEXT    NOT NULL CHECK (segmento_monto IN ('BAJO','MEDIO','ALTO')),
+    segmento_monto        TEXT    NOT NULL CHECK (segmento_monto IN ({SEGMENTOS_SQL})),
     moneda                TEXT    NOT NULL DEFAULT 'MXN' CHECK (moneda = 'MXN'),
     metodo_pago           TEXT,
     estatus               TEXT,
@@ -134,6 +141,20 @@ def cargar(conn: sqlite3.Connection, tabla: str, columnas: list[str],
         raise
 
 
+def esquema_vigente(conn: sqlite3.Connection) -> None:
+    """
+    Si config.yaml cambio las etiquetas de segmento, el CHECK de una base anterior
+    rechazaria todas las filas nuevas. En ese caso la tabla se recrea (la carga es
+    completa e idempotente, asi que no se pierde nada que no se vuelva a cargar).
+    """
+    fila = conn.execute("SELECT sql FROM sqlite_master WHERE type='table' "
+                        "AND name='transacciones_limpias'").fetchone()
+    if fila and f"IN ({SEGMENTOS_SQL})" not in (fila[0] or ""):
+        conn.execute("DROP TABLE transacciones_limpias")
+        conn.commit()
+        print("\n  Etiquetas de segmento distintas en config.yaml: transacciones_limpias se recrea.")
+
+
 def probar_rollback(conn: sqlite3.Connection) -> bool:
     """
     Prueba explicita de atomicidad.
@@ -144,7 +165,7 @@ def probar_rollback(conn: sqlite3.Connection) -> bool:
     corrupta = [(
         "ROLLBACK-TEST", "FISICA", "prueba", "PROD-001", "x", "y", "z", None,
         -99,            # viola CHECK (cantidad > 0)
-        10.0, 10.0, 10.0, 0.5, "BAJO", "MXN", "EFECTIVO", "COMPLETADO",
+        10.0, 10.0, 10.0, 0.5, CFG.etiquetas[0], "MXN", "EFECTIVO", "COMPLETADO",
         "2026-06-01", 0, 0,
     )]
     try:
@@ -183,6 +204,7 @@ def main() -> None:
 
     conn = conectar(BD)
     try:
+        esquema_vigente(conn)
         conn.executescript(DDL_LIMPIAS)
         conn.executescript(DDL_CUARENTENA)
         for ddl in DDL_INDICES:
@@ -220,8 +242,7 @@ def main() -> None:
         for fila in conn.execute(
             "SELECT canal, segmento_monto, COUNT(*), ROUND(SUM(monto_facturable_mxn),2) "
             "FROM transacciones_limpias GROUP BY canal, segmento_monto "
-            "ORDER BY canal, CASE segmento_monto WHEN 'BAJO' THEN 1 "
-            "WHEN 'MEDIO' THEN 2 ELSE 3 END"
+            f"ORDER BY canal, CASE segmento_monto {ORDEN_SEGMENTOS_SQL} ELSE 99 END"
         ):
             print(f"    {fila[0]:<8} {fila[1]:<6} {fila[2]:>5} pedidos   "
                   f"${fila[3]:>14,.2f} facturado")

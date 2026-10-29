@@ -1,0 +1,56 @@
+# =============================================================================
+#  Umbrales y parametros del pipeline ETL
+#  Ingenieria de Datos (ATD-2602) - TecNM Campus Colima - Grupo 1 (Retail)
+# =============================================================================
+#
+#  Este archivo esta versionado en git a proposito: cada cambio de umbral queda
+#  en el historial con su autor, su fecha y su porque (`git log -p config.yaml`).
+#
+#  Lo leen las fases oficiales (fase0 ... fase7) y el motor universal.
+#  Reglas para cambiarlo:
+#    1. Sube `version` en 1.
+#    2. Vuelve a correr el pipeline y las suites de QA.
+#    3. Si cambia una cifra del resultado, actualiza README, REGLAS_DE_NEGOCIO
+#       y GUIA_DEFENSA.
+#
+#  El cargador (configuracion.py) rechaza claves desconocidas, claves faltantes,
+#  tipos incorrectos y valores fuera de rango: un error de dedo nunca se
+#  convierte en un umbral distinto sin que nadie lo note.
+# =============================================================================
+
+version: 1
+
+moneda:
+  tipo_cambio_usd_mxn: 19.50       # F4: USD -> MXN. Se aplica ANTES del IQR
+
+outliers:
+  factor_iqr: 1.5                  # F3: convencion de Tukey. Capping, no se borra ninguna fila
+  min_datos_por_grupo: 8           # F3: con menos datos los cuartiles no son confiables
+
+segmentacion:
+  cuantiles: 3                     # F5: terciles (grupos de tamano comparable)
+  etiquetas: [BAJO, MEDIO, ALTO]   # una etiqueta por cuantil, de menor a mayor
+
+faltantes:
+  alfa: 0.05                       # F2: significancia de la prueba MCAR / MAR
+  umbral_columna_vacia: 0.60       # motor: con mas de 60 % de nulos la columna no se imputa
+
+validacion:
+  tolerancia_pesos: 0.01           # F6 R3b: diferencia maxima al recalcular cantidad x precio
+  precio_relleno: 500.00           # F6 R2: valor por defecto del POS (no es un precio real)
+  factor_bot: 80                   # F6 R3a: factor exacto con el que los bots inflan el total
+  inicio_operacion: "2026-01-01"   # F6: periodo operativo valido
+  fin_operacion: "2026-12-31"
+
+contrato:
+  umbral_difuso: 0.70              # F0: similitud minima para aceptar un nombre de columna parecido
+
+motor:
+  max_columnas: 500                # columnas que se conservan de un archivo muy ancho
+  max_categorias_chi2: 15          # niveles maximos de una variable usada en la prueba chi2
+  lote_validacion: 50000           # filas por lote de validacion Pydantic
+  bloques:
+    umbral_mb: 256                 # archivos mas grandes se procesan por bloques (chunksize)
+    filas_por_bloque: 200000       # filas que se leen a memoria a la vez
+    filas_muestra_tipos: 100000    # muestra aleatoria uniforme para inferir tipos
+    valores_muestra_cuantiles: 1000000   # cuantiles exactos hasta este numero de valores

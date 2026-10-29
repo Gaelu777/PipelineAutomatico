@@ -20,13 +20,16 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from configuracion import cargar_o_salir
+
+CFG = cargar_o_salir()
 BASE = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("salidas_fase2")
 DATASETS = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("datasets")
 OUT = Path(sys.argv[3]) if len(sys.argv) > 3 else Path("salidas_fase4")
-FACTOR_IQR = 1.5
-TASA_USD = 19.50
+FACTOR_IQR = CFG.factor_iqr                # config.yaml: outliers.factor_iqr
+TASA_USD = CFG.tipo_cambio_usd_mxn         # config.yaml: moneda.tipo_cambio_usd_mxn
 ZONA = "America/Mexico_City"          # todas las fechas se expresan en hora local de México
-MIN_GRUPO_IQR = 8                     # con menos datos los cuartiles no son confiables
+MIN_GRUPO_IQR = CFG.min_datos_por_grupo_iqr   # con menos datos los cuartiles no son confiables
 
 MAESTROS = {
     "catalogo_productos": dict(archivo="catalogo_productos.csv", llave="id_producto",
@@ -412,7 +415,7 @@ def main():
      ).to_csv(OUT / "eliminados_imposibles.csv", index=False, encoding="utf-8-sig")
     pd.DataFrame(salidas["log"]).to_csv(OUT / "log_fase4.csv", index=False, encoding="utf-8-sig")
     resumen = dict(parametros=dict(factor_iqr=FACTOR_IQR, tasa_usd_mxn=TASA_USD, zona_horaria=ZONA,
-                                   min_datos_por_grupo_iqr=MIN_GRUPO_IQR),
+                                   min_datos_por_grupo_iqr=MIN_GRUPO_IQR, configuracion=CFG.huella()),
                    filas=salidas["filas"], umbrales=umbrales.to_dict("records"), log=salidas["log"])
     json.dump(resumen, open(OUT / "resumen_fase3_fase4.json", "w", encoding="utf-8"),
               ensure_ascii=False, indent=2, default=str)

@@ -17,9 +17,14 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+from configuracion import cargar_o_salir
+
+CFG = cargar_o_salir()
 BASE = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("datasets")
 OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("salidas_fase2")
-ALPHA = 0.05
+ALPHA = CFG.alfa                     # config.yaml: faltantes.alfa
+FACTOR_IQR = CFG.factor_iqr         # config.yaml: outliers.factor_iqr (solo diagnostico)
+TASA_USD = CFG.tipo_cambio_usd_mxn  # config.yaml: moneda.tipo_cambio_usd_mxn
 VACIOS = {"", "NA", "N/A", "NULL", "NONE", "NAN"}          # texto que en realidad es "dato faltante"
 
 # Configuración por fuente: qué se recalcula, qué se imputa con mediana y qué con etiqueta controlada
@@ -141,7 +146,7 @@ def imputar(df: pd.DataFrame, cfg: dict, nombre: str, log: list) -> pd.DataFrame
 # ----------------------------------------------------------------------------- hallazgos para fases siguientes (solo conteos)
 def iqr_info(s: pd.Series) -> dict:
     s = s.dropna(); q1, q3 = s.quantile([.25, .75]); i = q3 - q1
-    lo, hi = q1 - 1.5 * i, q3 + 1.5 * i
+    lo, hi = q1 - FACTOR_IQR * i, q3 + FACTOR_IQR * i
     return dict(q1=round(q1, 2), q3=round(q3, 2), limite_inf=round(lo, 2), limite_sup=round(hi, 2),
                 outliers=int(((s < lo) | (s > hi)).sum()))
 
@@ -158,7 +163,7 @@ def hallazgos(nombre: str, d: pd.DataFrame, maestro: dict) -> list:
     if nombre == "ventas_online":
         tot = (d.units * d.unit_price - d.total_amount).abs() > 0.01
         h += [("Timestamps mezclados: ISO texto y epoch entero", int(d.order_timestamp.map(lambda x: isinstance(x, int)).sum()), 4),
-              ("Pedidos en USD (convertir a MXN @ 19.50)", int((d.currency == "USD").sum()), 4),
+              (f"Pedidos en USD (convertir a MXN @ {TASA_USD:.2f})", int((d.currency == "USD").sum()), 4),
               ("total_amount != units * unit_price (patrón bot, total x80)", int(tot.sum()), 3),
               ("Correos malformados (no vacíos) -> cuarentena/validación", mal_email(d.customer_email), 6),
               ("order_status con 'completado'/'COMPLETADO' (mayúsculas inconsistentes)", int((d.order_status == "completado").sum()), 4),
@@ -169,7 +174,7 @@ def hallazgos(nombre: str, d: pd.DataFrame, maestro: dict) -> list:
               ("id_cuenta huérfana (no existe en catalogo_cuentas)", int((~d.id_cuenta.isin(maestro["catalogo_cuentas"].id_cuenta)).sum()), 4)]
     if nombre == "transferencias_digitales":
         h += [("Timestamps mezclados: ISO con zona horaria y epoch entero", int(d.timestamp.map(lambda x: isinstance(x, int)).sum()), 4),
-              ("Transferencias en USD (convertir a MXN @ 19.50)", int((d.currency == "USD").sum()), 4),
+              (f"Transferencias en USD (convertir a MXN @ {TASA_USD:.2f})", int((d.currency == "USD").sum()), 4),
               ("CLABE con menos de 18 dígitos -> cuarentena", int((d.beneficiary_clabe.astype(str).str.len() != 18).sum()), 6),
               ("Correos malformados (no vacíos) -> cuarentena/validación", mal_email(d.notification_email), 6),
               ("status con 'liquidada'/'LIQUIDADA' (mayúsculas inconsistentes)", int((d.status == "liquidada").sum()), 4),

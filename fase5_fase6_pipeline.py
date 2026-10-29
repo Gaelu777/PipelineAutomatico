@@ -32,16 +32,23 @@ import numpy as np
 import pandas as pd
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from configuracion import cargar_o_salir
+
+CFG = cargar_o_salir()
+
 ENTRADA = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("salidas_fase4")
 SALIDA = Path(sys.argv[2]) if len(sys.argv) > 2 else Path("salidas_fase6")
 SALIDA.mkdir(parents=True, exist_ok=True)
 
 # --------------------------------------------------------------- parametros
-TOLERANCIA_PESOS = 0.01          # diferencia maxima aceptada al recalcular un total
-PRECIO_RELLENO = 500.00          # valor por defecto que usa el POS cuando no halla el producto
-FACTOR_BOT = 80                  # factor exacto con el que los bots inflan el total
-INICIO_OPERACION = date(2026, 1, 1)
-FIN_OPERACION = date(2026, 12, 31)
+# Los umbrales viven en config.yaml (versionado); aqui solo se leen.
+TOLERANCIA_PESOS = CFG.tolerancia_pesos   # diferencia maxima aceptada al recalcular un total
+PRECIO_RELLENO = CFG.precio_relleno       # valor por defecto que usa el POS cuando no halla el producto
+FACTOR_BOT = CFG.factor_bot               # factor exacto con el que los bots inflan el total
+INICIO_OPERACION = CFG.inicio_operacion
+FIN_OPERACION = CFG.fin_operacion
+N_CUANTILES = CFG.cuantiles               # 3 = terciles
+ETIQUETAS_SEGMENTO = list(CFG.etiquetas)  # BAJO, MEDIO, ALTO
 RE_PRODUCTO = re.compile(r"^PROD-\d{3}$")
 RE_CORREO = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$")
 
@@ -84,13 +91,13 @@ def discretizar(s: pd.Series) -> tuple[pd.Series, dict]:
     con poder estadistico similar.
     """
     s = pd.to_numeric(s, errors="coerce")
-    etiquetas = ["BAJO", "MEDIO", "ALTO"]
+    etiquetas = ETIQUETAS_SEGMENTO
     try:
-        seg, cortes = pd.qcut(s, q=3, labels=etiquetas, retbins=True, duplicates="drop")
-        if seg.cat.categories.size < 3:
+        seg, cortes = pd.qcut(s, q=N_CUANTILES, labels=etiquetas, retbins=True, duplicates="drop")
+        if seg.cat.categories.size < N_CUANTILES:
             raise ValueError("terciles colapsados")
     except (ValueError, IndexError):
-        seg, cortes = pd.cut(s, bins=3, labels=etiquetas, retbins=True)
+        seg, cortes = pd.cut(s, bins=N_CUANTILES, labels=etiquetas, retbins=True)
     return seg.astype(str), {"cortes": [round(float(c), 2) for c in cortes]}
 
 
@@ -110,9 +117,9 @@ def fase5(df: pd.DataFrame) -> pd.DataFrame:
     registrar("5", "minmax_cantidad", f"[{info_c['min']:.0f}, {info_c['max']:.0f}] -> [0, 1]")
 
     df["segmento_monto"], info_d = discretizar(df["monto_mxn"])
-    registrar("5", "cortes_terciles", info_d["cortes"], "BAJO / MEDIO / ALTO")
+    registrar("5", "cortes_terciles", info_d["cortes"], " / ".join(ETIQUETAS_SEGMENTO))
 
-    reparto = df["segmento_monto"].value_counts().reindex(["BAJO", "MEDIO", "ALTO"]).to_dict()
+    reparto = df["segmento_monto"].value_counts().reindex(ETIQUETAS_SEGMENTO).to_dict()
     registrar("5", "reparto_segmentos", reparto)
 
     # Verificacion dura: el escalamiento no puede salirse del rango pedido.
@@ -123,7 +130,7 @@ def fase5(df: pd.DataFrame) -> pd.DataFrame:
     resumen_seg = (
         df.groupby("segmento_monto")["monto_mxn"]
           .agg(n="count", minimo="min", maximo="max", promedio="mean")
-          .round(2).reindex(["BAJO", "MEDIO", "ALTO"])
+          .round(2).reindex(ETIQUETAS_SEGMENTO)
     )
     print("\n  Rango real de cada segmento:")
     print(resumen_seg.to_string())
@@ -131,7 +138,8 @@ def fase5(df: pd.DataFrame) -> pd.DataFrame:
 
     with open(SALIDA / "parametros_escalamiento.json", "w", encoding="utf-8") as f:
         json.dump({"minmax_monto": info_mm, "minmax_cantidad": info_c,
-                   "terciles": info_d, "reparto": {k: int(v) for k, v in reparto.items()}},
+                   "terciles": info_d, "reparto": {k: int(v) for k, v in reparto.items()},
+                   "configuracion": CFG.huella()},
                   f, indent=2, ensure_ascii=False)
     return df
 
@@ -173,7 +181,7 @@ class TransaccionLimpia(BaseModel):
     monto_mxn: float = Field(gt=0, le=10_000_000)
     monto_facturable_mxn: float = Field(ge=0)
     monto_mxn_norm: float = Field(ge=0.0, le=1.0)
-    segmento_monto: Literal["BAJO", "MEDIO", "ALTO"]
+    segmento_monto: Literal[tuple(ETIQUETAS_SEGMENTO)]  # type: ignore[valid-type]  # config.yaml
     moneda: Literal["MXN"] = "MXN"
 
     # --- operacion
@@ -295,8 +303,8 @@ class TransaccionLimpia(BaseModel):
 #: Etiqueta legible por tipo de rechazo, para el resumen y el reporte.
 ETIQUETAS_MOTIVO = [
     ("llave huerfana", "Llave huerfana (producto inexistente)"),
-    ("precio de relleno", "Precio de relleno 500.00"),
-    ("patron de bot", "Total inflado x80 (bot)"),
+    ("precio de relleno", f"Precio de relleno {PRECIO_RELLENO:.2f}"),
+    ("patron de bot", f"Total inflado x{FACTOR_BOT} (bot)"),
     ("total inconsistente", "Total distinto de cantidad x precio"),
     ("arroba o punto duplicado", "Correo con @@ o .."),
     ("sintaxis invalida", "Correo con sintaxis invalida"),
@@ -426,8 +434,10 @@ def pruebas_de_estres() -> pd.DataFrame:
         "id_producto": "PROD-001", "nombre_producto": "Prueba", "categoria": "Hogar",
         "cliente": "CTE-001", "correo": None, "cantidad": 2,
         "precio_unitario_mxn": 100.0, "monto_mxn": 200.0, "monto_facturable_mxn": 200.0,
-        "monto_mxn_norm": 0.5, "segmento_monto": "MEDIO", "metodo_pago": "EFECTIVO",
-        "estatus": "COMPLETADO", "fecha": date(2026, 6, 15),
+        "monto_mxn_norm": 0.5, "segmento_monto": ETIQUETAS_SEGMENTO[len(ETIQUETAS_SEGMENTO) // 2],
+        "metodo_pago": "EFECTIVO", "estatus": "COMPLETADO",
+        "fecha": date(2026, 6, 15) if INICIO_OPERACION <= date(2026, 6, 15) <= FIN_OPERACION
+        else INICIO_OPERACION + (FIN_OPERACION - INICIO_OPERACION) // 2,
         "flag_outlier": False, "flag_huerfano": False,
     }
 
@@ -442,9 +452,11 @@ def pruebas_de_estres() -> pd.DataFrame:
         ("id_producto mal formado", {"id_producto": "PRODUCTO-1"}),
         ("id_producto vacio", {"id_producto": ""}),
         ("llave huerfana", {"flag_huerfano": True}),
-        ("precio de relleno 500", {"precio_unitario_mxn": 500.0, "monto_mxn": 1000.0,
-                                   "monto_facturable_mxn": 1000.0}),
-        ("total inflado x80 (bot)", {"monto_mxn": 16000.0, "monto_facturable_mxn": 16000.0}),
+        (f"precio de relleno {PRECIO_RELLENO:g}", {"precio_unitario_mxn": PRECIO_RELLENO,
+                                   "monto_mxn": 2 * PRECIO_RELLENO,
+                                   "monto_facturable_mxn": 2 * PRECIO_RELLENO}),
+        (f"total inflado x{FACTOR_BOT} (bot)", {"monto_mxn": 200.0 * FACTOR_BOT,
+                                   "monto_facturable_mxn": 200.0 * FACTOR_BOT}),
         ("total inconsistente", {"monto_mxn": 999.0, "monto_facturable_mxn": 999.0}),
         ("bot recortado por capping", {"flag_outlier": True, "flag_total_inconsistente": True,
                                        "monto_mxn": 8100.74, "monto_facturable_mxn": 8100.74}),

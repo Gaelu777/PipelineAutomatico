@@ -49,7 +49,10 @@ from typing import Any
 
 import pandas as pd
 
-UMBRAL_DIFUSO = 0.70
+from configuracion import cargar_o_salir
+
+CFG = cargar_o_salir()
+UMBRAL_DIFUSO = CFG.umbral_difuso          # config.yaml: contrato.umbral_difuso
 
 
 # ===================================================== contrato por fuente
