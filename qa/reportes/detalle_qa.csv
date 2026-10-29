@@ -1,0 +1,201 @@
+﻿escenario,categoria,nombre,ok,detalle
+base_2k,SETUP,generacion del dataset,True,0.8s
+base_2k,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.5s
+base_2k,RESILIENCIA,fase1_2 termina sin excepcion,True,1.5s
+base_2k,RESILIENCIA,fase3_4 termina sin excepcion,True,0.7s
+base_2k,RESILIENCIA,fase5_6 termina sin excepcion,True,0.9s
+base_2k,RESILIENCIA,fase7 termina sin excepcion,True,0.5s
+base_2k,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,3488 + 476 = 3964 vs 3964
+base_2k,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+base_2k,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+base_2k,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+base_2k,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+base_2k,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+base_2k,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+base_2k,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+base_2k,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+base_2k,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+base_2k,DETECCION,huerfanos detectados >= 85% de los plantados,True,199 de 200 plantados
+base_2k,DETECCION,correos invalidos capturados >= 85%,True,92 de 92 plantados
+base_2k,DETECCION,bots / totales inflados capturados >= 70%,True,190 de 40 plantados
+base_2k,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,12.01% del lote
+base_2k,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(3488, 21) vs (3488, 21)"
+base_2k,INTEGRIDAD,I-extra recarga a BD es idempotente,True,3488 filas en BD vs 3488 en CSV
+sucio_3x,SETUP,generacion del dataset,True,0.6s
+sucio_3x,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.6s
+sucio_3x,RESILIENCIA,fase1_2 termina sin excepcion,True,1.7s
+sucio_3x,RESILIENCIA,fase3_4 termina sin excepcion,True,0.8s
+sucio_3x,RESILIENCIA,fase5_6 termina sin excepcion,True,1.3s
+sucio_3x,RESILIENCIA,fase7 termina sin excepcion,True,0.7s
+sucio_3x,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,7187 + 2559 = 9746 vs 9746
+sucio_3x,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+sucio_3x,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+sucio_3x,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+sucio_3x,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+sucio_3x,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+sucio_3x,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+sucio_3x,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+sucio_3x,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+sucio_3x,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+sucio_3x,DETECCION,huerfanos detectados >= 85% de los plantados,True,1472 de 1500 plantados
+sucio_3x,DETECCION,correos invalidos capturados >= 85%,True,685 de 690 plantados
+sucio_3x,DETECCION,bots / totales inflados capturados >= 70%,True,517 de 300 plantados
+sucio_3x,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,26.26% del lote
+sucio_3x,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(7187, 21) vs (7187, 21)"
+sucio_3x,INTEGRIDAD,I-extra recarga a BD es idempotente,True,7187 filas en BD vs 7187 en CSV
+limpio_0x,SETUP,generacion del dataset,True,0.6s
+limpio_0x,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.6s
+limpio_0x,RESILIENCIA,fase1_2 termina sin excepcion,True,1.5s
+limpio_0x,RESILIENCIA,fase3_4 termina sin excepcion,True,0.7s
+limpio_0x,RESILIENCIA,fase5_6 termina sin excepcion,True,1.0s
+limpio_0x,RESILIENCIA,fase7 termina sin excepcion,True,0.6s
+limpio_0x,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,5720 + 280 = 6000 vs 6000
+limpio_0x,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+limpio_0x,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+limpio_0x,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+limpio_0x,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+limpio_0x,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+limpio_0x,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+limpio_0x,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+limpio_0x,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+limpio_0x,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+limpio_0x,DETECCION,huerfanos detectados >= 85% de los plantados,True,0 de 0 plantados
+limpio_0x,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,4.67% del lote
+limpio_0x,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(5720, 21) vs (5720, 21)"
+limpio_0x,INTEGRIDAD,I-extra recarga a BD es idempotente,True,5720 filas en BD vs 5720 en CSV
+ruidoso_cols,SETUP,generacion del dataset,True,0.5s
+ruidoso_cols,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.5s
+ruidoso_cols,RESILIENCIA,fase1_2 termina sin excepcion,True,1.6s
+ruidoso_cols,RESILIENCIA,fase3_4 termina sin excepcion,True,0.8s
+ruidoso_cols,RESILIENCIA,fase5_6 termina sin excepcion,True,0.9s
+ruidoso_cols,RESILIENCIA,fase7 termina sin excepcion,True,0.5s
+ruidoso_cols,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,5251 + 697 = 5948 vs 5948
+ruidoso_cols,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+ruidoso_cols,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+ruidoso_cols,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+ruidoso_cols,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+ruidoso_cols,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+ruidoso_cols,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+ruidoso_cols,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+ruidoso_cols,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+ruidoso_cols,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+ruidoso_cols,DETECCION,huerfanos detectados >= 85% de los plantados,True,298 de 300 plantados
+ruidoso_cols,DETECCION,correos invalidos capturados >= 85%,True,137 de 137 plantados
+ruidoso_cols,DETECCION,bots / totales inflados capturados >= 70%,True,267 de 60 plantados
+ruidoso_cols,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,11.72% del lote
+ruidoso_cols,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(5251, 21) vs (5251, 21)"
+ruidoso_cols,INTEGRIDAD,I-extra recarga a BD es idempotente,True,5251 filas en BD vs 5251 en CSV
+minimo_cols,SETUP,generacion del dataset,True,0.6s
+minimo_cols,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.6s
+minimo_cols,RESILIENCIA,fase1_2 termina sin excepcion,True,1.6s
+minimo_cols,RESILIENCIA,fase3_4 termina sin excepcion,True,0.7s
+minimo_cols,RESILIENCIA,fase5_6 termina sin excepcion,True,1.0s
+minimo_cols,RESILIENCIA,fase7 termina sin excepcion,True,0.6s
+minimo_cols,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,4939 + 1009 = 5948 vs 5948
+minimo_cols,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+minimo_cols,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+minimo_cols,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+minimo_cols,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+minimo_cols,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+minimo_cols,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+minimo_cols,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+minimo_cols,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+minimo_cols,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+minimo_cols,DETECCION,huerfanos detectados >= 85% de los plantados,True,298 de 300 plantados
+minimo_cols,DETECCION,correos invalidos capturados >= 85%,True,137 de 137 plantados
+minimo_cols,DETECCION,bots / totales inflados capturados >= 70%,True,267 de 60 plantados
+minimo_cols,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,16.96% del lote
+minimo_cols,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(4939, 21) vs (4939, 21)"
+minimo_cols,INTEGRIDAD,I-extra recarga a BD es idempotente,True,4939 filas en BD vs 4939 en CSV
+drift_ingles,SETUP,generacion del dataset,True,0.6s
+drift_ingles,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.5s
+drift_ingles,ESQUEMA,columnas renombradas reconocidas por el contrato,True,9 columnas mapeadas
+drift_ingles,ESQUEMA,sin mapeos de confianza dudosa (<0.90),True,0 dudosos
+drift_ingles,RESILIENCIA,fase1_2 termina sin excepcion,True,1.7s
+drift_ingles,RESILIENCIA,fase3_4 termina sin excepcion,True,0.7s
+drift_ingles,RESILIENCIA,fase5_6 termina sin excepcion,True,1.0s
+drift_ingles,RESILIENCIA,fase7 termina sin excepcion,True,0.6s
+drift_ingles,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,5251 + 697 = 5948 vs 5948
+drift_ingles,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+drift_ingles,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+drift_ingles,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+drift_ingles,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+drift_ingles,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+drift_ingles,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+drift_ingles,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+drift_ingles,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+drift_ingles,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+drift_ingles,DETECCION,huerfanos detectados >= 85% de los plantados,True,298 de 300 plantados
+drift_ingles,DETECCION,correos invalidos capturados >= 85%,True,137 de 137 plantados
+drift_ingles,DETECCION,bots / totales inflados capturados >= 70%,True,267 de 60 plantados
+drift_ingles,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,11.72% del lote
+drift_ingles,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(5251, 21) vs (5251, 21)"
+drift_ingles,INTEGRIDAD,I-extra recarga a BD es idempotente,True,5251 filas en BD vs 5251 en CSV
+drift_erp,SETUP,generacion del dataset,True,0.6s
+drift_erp,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,0.5s
+drift_erp,ESQUEMA,columnas renombradas reconocidas por el contrato,True,17 columnas mapeadas
+drift_erp,ESQUEMA,sin mapeos de confianza dudosa (<0.90),True,0 dudosos
+drift_erp,RESILIENCIA,fase1_2 termina sin excepcion,True,1.7s
+drift_erp,RESILIENCIA,fase3_4 termina sin excepcion,True,0.8s
+drift_erp,RESILIENCIA,fase5_6 termina sin excepcion,True,1.2s
+drift_erp,RESILIENCIA,fase7 termina sin excepcion,True,0.5s
+drift_erp,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,5251 + 697 = 5948 vs 5948
+drift_erp,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+drift_erp,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+drift_erp,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+drift_erp,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+drift_erp,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+drift_erp,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+drift_erp,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+drift_erp,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+drift_erp,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+drift_erp,DETECCION,huerfanos detectados >= 85% de los plantados,True,298 de 300 plantados
+drift_erp,DETECCION,correos invalidos capturados >= 85%,True,137 de 137 plantados
+drift_erp,DETECCION,bots / totales inflados capturados >= 70%,True,267 de 60 plantados
+drift_erp,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,11.72% del lote
+drift_erp,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(5251, 21) vs (5251, 21)"
+drift_erp,INTEGRIDAD,I-extra recarga a BD es idempotente,True,5251 filas en BD vs 5251 en CSV
+volumen_25k,SETUP,generacion del dataset,True,1.5s
+volumen_25k,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,1.2s
+volumen_25k,RESILIENCIA,fase1_2 termina sin excepcion,True,3.6s
+volumen_25k,RESILIENCIA,fase3_4 termina sin excepcion,True,1.8s
+volumen_25k,RESILIENCIA,fase5_6 termina sin excepcion,True,4.5s
+volumen_25k,RESILIENCIA,fase7 termina sin excepcion,True,1.5s
+volumen_25k,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,43435 + 6125 = 49560 vs 49560
+volumen_25k,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+volumen_25k,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+volumen_25k,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+volumen_25k,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+volumen_25k,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+volumen_25k,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+volumen_25k,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+volumen_25k,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+volumen_25k,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+volumen_25k,DETECCION,huerfanos detectados >= 85% de los plantados,True,2474 de 2500 plantados
+volumen_25k,DETECCION,correos invalidos capturados >= 85%,True,1134 de 1149 plantados
+volumen_25k,DETECCION,bots / totales inflados capturados >= 70%,True,2536 de 500 plantados
+volumen_25k,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,12.36% del lote
+volumen_25k,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(43435, 21) vs (43435, 21)"
+volumen_25k,INTEGRIDAD,I-extra recarga a BD es idempotente,True,43435 filas en BD vs 43435 en CSV
+volumen_100k,SETUP,generacion del dataset,True,4.5s
+volumen_100k,RESILIENCIA,fase0 adapta el esquema sin excepcion,True,3.4s
+volumen_100k,RESILIENCIA,fase1_2 termina sin excepcion,True,10.0s
+volumen_100k,RESILIENCIA,fase3_4 termina sin excepcion,True,6.0s
+volumen_100k,RESILIENCIA,fase5_6 termina sin excepcion,True,16.4s
+volumen_100k,RESILIENCIA,fase7 termina sin excepcion,True,4.4s
+volumen_100k,INTEGRIDAD,I1 ninguna fila se pierde en Fase 6,True,173376 + 24850 = 198226 vs 198226
+volumen_100k,INTEGRIDAD,I2 cero huerfanos en tabla limpia,True,0 encontrados
+volumen_100k,INTEGRIDAD,I3 cero correos invalidos en tabla limpia,True,0 encontrados
+volumen_100k,INTEGRIDAD,I4 monto = cantidad x precio (no recortadas),True,max desviacion 0.0100
+volumen_100k,INTEGRIDAD,I5 todas las fechas en YYYY-MM-DD,True,0 no parseables
+volumen_100k,INTEGRIDAD,I6 cero importes sin convertir a MXN,True,0 filas
+volumen_100k,INTEGRIDAD,"I7 monto_mxn_norm dentro de [0,1]",True,0 fuera
+volumen_100k,INTEGRIDAD,I8 id_registro unico (llave primaria),True,0 duplicados
+volumen_100k,INTEGRIDAD,I9 toda cuarentena tiene motivo,True,0 sin motivo
+volumen_100k,INTEGRIDAD,I10 cero montos no positivos en limpias,True,0 filas
+volumen_100k,DETECCION,huerfanos detectados >= 85% de los plantados,True,9905 de 10000 plantados
+volumen_100k,DETECCION,correos invalidos capturados >= 85%,True,4380 de 4599 plantados
+volumen_100k,DETECCION,bots / totales inflados capturados >= 70%,True,9931 de 2000 plantados
+volumen_100k,DETECCION,cuarentena por debajo del 40% (sin falsos masivos),True,12.54% del lote
+volumen_100k,INTEGRIDAD,I-extra idempotencia (misma salida al repetir),True,"(173376, 21) vs (173376, 21)"
+volumen_100k,INTEGRIDAD,I-extra recarga a BD es idempotente,True,173376 filas en BD vs 173376 en CSV

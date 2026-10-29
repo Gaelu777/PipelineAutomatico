@@ -8,3 +8,17 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+
+# datos canonicos generados por la Fase 0 (se regeneran)
+datasets_canon/
+
+# temporales de la suite de QA (datasets sinteticos, pesan cientos de MB)
+qa/tmp/
+
+# temporales WAL de SQLite
+*.db-shm
+*.db-wal
+
+# corridas del motor universal (archivos subidos desde el panel)
+corridas/
+qa/tmp_tortura/

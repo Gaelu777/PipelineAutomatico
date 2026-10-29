@@ -125,7 +125,12 @@ def imputar(df: pd.DataFrame, cfg: dict, nombre: str, log: list) -> pd.DataFrame
                         valor_usado=json.dumps(detalle, ensure_ascii=False), faltantes_restantes=int(df[col].isna().sum())))
     # 3) Categóricas -> etiqueta controlada
     for col, etiqueta in cfg.get("etiquetas", {}).items():
+        if col not in df.columns:            # la fuente no trajo esta columna
+            continue
         m = df[col].isna()
+        # Una columna 100% vacia la infiere pandas como float64; escribir texto lanza TypeError.
+        if m.all() or df[col].dtype.kind in "fiub":
+            df[col] = df[col].astype(object)
         df.loc[m, col] = etiqueta
         marcar(df, m, col)
         log.append(dict(fuente=nombre, columna=col, estrategia="Etiqueta controlada", n_imputados=int(m.sum()),

@@ -54,6 +54,35 @@ Motivos de cuarentena: 57 llaves huérfanas, 48 correos inválidos, 25 totales q
 Pruebas de estrés: 25 casos de inyección de datos corruptos, 0 excepciones no controladas.
 Rollback verificado contra la base de datos real.
 
+## Inicio rápido (exposición)
+
+1. Doble clic en `INSTALAR.bat` (solo la primera vez).
+2. Doble clic en `INICIAR_PANEL.bat`: abre el panel en el navegador.
+3. Pestaña **Prueba tu dataset**: arrastra cualquier archivo (CSV, TSV, Excel, JSON, JSON Lines,
+   Parquet o ZIP) y pulsa *Procesar dataset*. Para una demo, usa `demo/profe_sucio.xlsx`.
+4. Si algo falla, `dashboard_offline.html` abre con doble clic sin servidor ni internet.
+
+Guía completa para la defensa: `GUIA_DEFENSA.pdf`.
+
+## Motor universal
+
+```
+python motor/pipeline_universal.py <archivo_o_carpeta> [carpeta_salida]
+```
+
+Aplica las 7 fases a cualquier dataset sin conocer sus columnas: detecta codificación,
+separador y coma decimal; infiere tipos; recalcula antes de imputar; clasifica MCAR/MAR;
+IQR con capping; fechas y epoch a ISO; USD a MXN; detecta solo el catálogo maestro y los
+huérfanos; Min-Max y terciles; esquema Pydantic generado en tiempo de ejecución y validado
+por lotes; carga a SQLite con rollback verificado. Ninguna entrada lo tumba.
+
+```
+python qa/tortura_universal.py --grande
+```
+
+21 archivos raros o rotos (Excel multihoja, CP-1252 con `;`, JSON anidado, binario, vacío,
+celdas de 2 MB, infinitos…) y un millón de filas en 40 s: 0 excepciones no controladas.
+
 Las carpetas `salidas_fase*` no se versionan: se regeneran con los comandos de arriba.
 Las fuentes que no existan en `datasets/` se omiten.
 

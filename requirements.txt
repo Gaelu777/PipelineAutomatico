@@ -1,0 +1,11 @@
+# Pipeline ETL - Ingenieria de Datos (ATD-2602)
+# Instalacion:  pip install -r requirements.txt   (o doble clic en INSTALAR.bat)
+pandas>=2.0
+numpy>=1.24
+scipy>=1.10
+pydantic>=2.0
+openpyxl>=3.1     # leer Excel .xlsx en el motor universal
+xlrd>=2.0         # leer Excel antiguo .xls
+pyarrow>=14       # leer Parquet (opcional)
+
+# El panel de control (app/) no usa ninguna: solo libreria estandar de Python 3.10+.

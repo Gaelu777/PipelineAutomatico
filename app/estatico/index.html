@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel ETL — Ingeniería de Datos</title>
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'&gt;&lt;rect width='32' height='32' rx='7' fill='%231f3a5f'/&gt;&lt;text x='16' y='22' font-size='14' font-family='sans-serif' font-weight='bold' fill='white' text-anchor='middle'&gt;ETL&lt;/text&gt;&lt;/svg&gt;">
+<link rel="stylesheet" href="estilos.css">
+</head>
+<body>
+
+<header class="cabecera">
+  <div class="marca">
+    <div class="logo">ETL</div>
+    <div>
+      <h1>Panel de Control del Pipeline</h1>
+      <p>Proyecto Integrador · Ingeniería de Datos (ATD-2602) · TecNM Campus Colima</p>
+    </div>
+  </div>
+  <div class="estado-bd">
+    <span id="sello-bd" class="sello">cargando…</span>
+    <span id="actualizado" class="tenue"></span>
+  </div>
+</header>
+
+<nav class="menu" id="menu">
+  <button class="tab tab-destacada" data-vista="universal">Prueba tu dataset</button>
+  <button class="tab activa" data-vista="resumen">Resumen</button>
+  <button class="tab" data-vista="flujo">Las 7 fases</button>
+  <button class="tab" data-vista="enganosos">Datos engañosos</button>
+  <button class="tab" data-vista="cuarentena">Cuarentena</button>
+  <button class="tab" data-vista="negocio">Negocio</button>
+  <button class="tab" data-vista="estres">Pruebas de estrés</button>
+  <button class="tab" data-vista="qa">QA a escala</button>
+  <button class="tab" data-vista="ejecutar">Ejecutar pipeline</button>
+</nav>
+
+<main id="contenido">
+
+  <!-- ============================================ UNIVERSAL -->
+  <section class="vista" id="v-universal">
+    <div class="aviso">
+      <strong>Sube cualquier dataset, limpio o sucio.</strong>
+      CSV, TSV, TXT, Excel (todas las hojas), JSON, JSON Lines, Parquet o un ZIP con varios.
+      El motor no necesita conocer las columnas: detecta tipos, aplica las 7 fases y separa
+      lo válido de lo que va a cuarentena con su motivo. Si subes varios archivos, detecta
+      solo cuál es el catálogo maestro y marca las llaves huérfanas.
+    </div>
+    <div class="tarjeta">
+      <div id="zona" class="zona">
+        <div class="zona-titulo">Arrastra aquí tus archivos</div>
+        <div class="tenue">o haz clic para elegirlos · hasta 2 GB por archivo</div>
+        <input id="archivo" type="file" multiple hidden
+               accept=".csv,.tsv,.txt,.xlsx,.xlsm,.xls,.json,.jsonl,.ndjson,.parquet,.zip">
+      </div>
+      <div id="lista-archivos" class="tenue"></div>
+      <div class="barra-acciones" style="margin-top:12px">
+        <button id="btn-universal" class="btn-principal" disabled>Procesar dataset</button>
+        <span id="estado-universal" class="tenue">Elige uno o más archivos.</span>
+      </div>
+      <pre id="consola-u" class="consola" style="max-height:260px">Esperando archivos…</pre>
+    </div>
+    <div id="resultado-u"></div>
+  </section>
+
+  <!-- ============================================ RESUMEN -->
+  <section class="vista activa" id="v-resumen">
+    <div class="kpis" id="kpis"></div>
+    <div class="rejilla-2">
+      <div class="tarjeta">
+        <h2>Bifurcación del lote</h2>
+        <p class="sub">Cada registro termina en exactamente uno de los dos destinos. Ninguno se pierde.</p>
+        <div id="dona-bifurcacion"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Motivos de cuarentena</h2>
+        <p class="sub">Por qué se rechazó cada registro desviado.</p>
+        <div id="barras-cuarentena"></div>
+      </div>
+    </div>
+    <div class="tarjeta">
+      <h2>Qué hace este pipeline</h2>
+      <p class="sub">Resumen en una frase para cada etapa.</p>
+      <div class="pasos" id="pasos-resumen"></div>
+    </div>
+  </section>
+
+  <!-- ============================================ FLUJO -->
+  <section class="vista" id="v-flujo">
+    <div class="tarjeta">
+      <h2>Embudo de las 7 fases</h2>
+      <p class="sub">Cuántos registros entran y sobreviven a cada etapa del pipeline.</p>
+      <div id="embudo"></div>
+    </div>
+    <div class="tarjeta">
+      <h2>Detalle por fase</h2>
+      <div id="tabla-fases"></div>
+    </div>
+  </section>
+
+  <!-- ============================================ ENGAÑOSOS -->
+  <section class="vista" id="v-enganosos">
+    <div class="aviso">
+      <strong>El corazón del proyecto.</strong>
+      Estos registros pasan cualquier validación de tipo y formato. Se ven perfectamente
+      normales en un <code>head()</code>. Y aun así son falsos. Son los que ensucian un
+      reporte sin que nadie lo note.
+    </div>
+    <div id="tarjetas-enganosos"></div>
+  </section>
+
+  <!-- ============================================ CUARENTENA -->
+  <section class="vista" id="v-cuarentena">
+    <div class="tarjeta">
+      <h2>Zona de cuarentena</h2>
+      <p class="sub">Filtra por causa para ver los registros desviados y su motivo exacto.</p>
+      <div class="filtros" id="filtros-cuarentena"></div>
+      <div id="tabla-cuarentena"></div>
+    </div>
+  </section>
+
+  <!-- ============================================ NEGOCIO -->
+  <section class="vista" id="v-negocio">
+    <div class="rejilla-2">
+      <div class="tarjeta">
+        <h2>Facturado por canal y segmento</h2>
+        <p class="sub">La discretización de la Fase 5 es lo que permite leer esto de un vistazo.</p>
+        <div id="barras-segmento"></div>
+      </div>
+      <div class="tarjeta">
+        <h2>Rangos de cada segmento</h2>
+        <p class="sub">Cortes por terciles, no por montos fijos.</p>
+        <div id="tabla-segmentos"></div>
+      </div>
+    </div>
+    <div class="tarjeta">
+      <h2>Ventas por día</h2>
+      <div id="linea-serie"></div>
+    </div>
+    <div class="tarjeta">
+      <h2>Productos con mayor facturación</h2>
+      <div id="tabla-productos"></div>
+    </div>
+  </section>
+
+  <!-- ============================================ ESTRÉS -->
+  <section class="vista" id="v-estres">
+    <div class="aviso">
+      <strong>El criterio de éxito no es que los acepte.</strong>
+      Es que los rechace con un mensaje claro y <em>sin lanzar una excepción no controlada</em>.
+      Un pipeline de producción no se cae porque le llegó una fila corrupta.
+    </div>
+    <div class="tarjeta">
+      <h2>Inyección de datos corruptos</h2>
+      <div id="tabla-estres"></div>
+    </div>
+  </section>
+
+  <!-- ============================================ QA -->
+  <section class="vista" id="v-qa">
+    <div class="aviso">
+      <strong>Pruebas a escala con verdad conocida.</strong>
+      El generador planta una cantidad exacta de cada error, así que la suite no verifica
+      solo que el pipeline «no truene»: verifica que encontró <em>exactamente</em> lo que se plantó,
+      y que los datos que sí pasaron no fueron corrompidos.
+    </div>
+    <div class="tarjeta">
+      <h2>Escenarios ejecutados</h2>
+      <div id="tabla-qa"></div>
+    </div>
+    <div class="tarjeta">
+      <h2>Rendimiento según volumen</h2>
+      <p class="sub">El pipeline escala de forma lineal. No hay degradación por tamaño.</p>
+      <div id="grafico-escala"></div>
+    </div>
+  </section>
+
+  <!-- ============================================ EJECUTAR -->
+  <section class="vista" id="v-ejecutar">
+    <div class="tarjeta">
+      <h2>Ejecutar el pipeline completo</h2>
+      <p class="sub">Corre las 7 fases de principio a fin sobre los datos reales y recarga la base.</p>
+      <div class="barra-acciones">
+        <button id="btn-ejecutar" class="btn-principal">Ejecutar pipeline</button>
+        <span id="estado-ejecucion" class="tenue">Listo.</span>
+      </div>
+      <div class="progreso"><div id="barra-progreso"></div></div>
+      <pre id="consola" class="consola">Pulsa «Ejecutar pipeline» para comenzar.</pre>
+    </div>
+  </section>
+
+</main>
+
+<footer class="pie">
+  Panel sin dependencias externas: solo librería estándar de Python y JavaScript nativo.
+  Funciona sin internet.
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
